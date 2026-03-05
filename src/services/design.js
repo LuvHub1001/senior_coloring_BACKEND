@@ -11,7 +11,7 @@ async function createDesign({ title, category, description, file }) {
   // 고유 파일명 생성
   const ext = path.extname(file.originalname);
   const fileName = `${crypto.randomUUID()}${ext}`;
-  const filePath = `${category}/${fileName}`;
+  const filePath = fileName;
 
   // Supabase Storage에 업로드
   const { error: uploadError } = await supabase.storage
@@ -21,6 +21,7 @@ async function createDesign({ title, category, description, file }) {
     });
 
   if (uploadError) {
+    console.error('Supabase upload error:', uploadError);
     const error = new Error('이미지 업로드에 실패했습니다.');
     error.status = 500;
     throw error;

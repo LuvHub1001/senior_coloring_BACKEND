@@ -40,7 +40,7 @@ async function list(req, res, next) {
 // 도안 상세 조회
 async function detail(req, res, next) {
   try {
-    const design = await getDesignById(req.params.id);
+    const design = await getDesignById(Number(req.params.id));
     res.json({ success: true, data: design });
   } catch (err) {
     next(err);
