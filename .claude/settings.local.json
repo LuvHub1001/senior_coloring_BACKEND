@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__figma__get_screenshot",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(mkdir:*)",
+      "Bash(timeout 5 node:*)",
+      "Bash(npx prisma:*)",
+      "Bash(node:*)",
+      "Bash(rm:*)"
+    ]
+  }
+}

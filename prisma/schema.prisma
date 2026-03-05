@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 사용자
+model User {
+  id         String   @id @default(uuid())
+  email      String?  @unique
+  nickname   String
+  avatarUrl  String?  @map("avatar_url")
+  provider   String   // kakao, naver
+  providerId String   @map("provider_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  artworks    Artwork[]
+  exhibitions Exhibition[]
+
+  @@unique([provider, providerId])
+  @@map("users")
+}
+
+// 컬러링 도안 (원본 템플릿)
+model Design {
+  id          String   @id @default(uuid())
+  title       String
+  category    String
+  imageUrl    String   @map("image_url")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  artworks Artwork[]
+
+  @@map("designs")
+}
+
+// 사용자 작품 (색칠 결과물)
+model Artwork {
+  id         String        @id @default(uuid())
+  userId     String        @map("user_id")
+  designId   String        @map("design_id")
+  imageUrl   String?       @map("image_url")
+  status     ArtworkStatus @default(IN_PROGRESS)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  user       User          @relation(fields: [userId], references: [id])
+  design     Design        @relation(fields: [designId], references: [id])
+  exhibition Exhibition?
+
+  @@map("artworks")
+}
+
+// 전시 (완성작 공개)
+model Exhibition {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  artworkId String   @unique @map("artwork_id")
+  title     String
+  shareUrl  String?  @map("share_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  artwork Artwork @relation(fields: [artworkId], references: [id])
+
+  @@map("exhibitions")
+}
+
+enum ArtworkStatus {
+  IN_PROGRESS
+  COMPLETED
+}
