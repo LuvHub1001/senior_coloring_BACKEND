@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const passport = require('./config/passport');
 const authRouter = require('./routes/auth');
 const userRouter = require('./routes/user');
+const designRouter = require('./routes/design');
 const { errorHandler } = require('./middlewares/errorHandler');
 
 const app = express();
@@ -31,6 +32,7 @@ app.get('/health', (req, res) => {
 // 라우터
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
+app.use('/api/designs', designRouter);
 
 // 에러 핸들링
 app.use(errorHandler);
