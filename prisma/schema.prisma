@@ -15,6 +15,7 @@ model Theme {
   imageUrl         String?  @map("image_url") // 테마 배경 이미지 URL
   buttonColor      String?  @map("button_color") // 버튼 배경색
   buttonTextColor  String?  @map("button_text_color") // 버튼 텍스트 색상
+  textColor        String?  @map("text_color") // 화면 타이틀/본문 텍스트 색상
   sortOrder        Int      @default(0) @map("sort_order")
   createdAt        DateTime @default(now()) @map("created_at")
 

@@ -9,6 +9,7 @@ const themes = [
     imageUrl: null,
     buttonColor: '#333D48',
     buttonTextColor: '#FFFFFF',
+    textColor: '#191F28',
     sortOrder: 1,
   },
   {
@@ -17,6 +18,7 @@ const themes = [
     imageUrl: null,
     buttonColor: '#FFFFFF',
     buttonTextColor: '#191F28',
+    textColor: '#FFFFFF',
     sortOrder: 2,
   },
   {
@@ -25,6 +27,7 @@ const themes = [
     imageUrl: null,
     buttonColor: '#FFFFFF',
     buttonTextColor: '#191F28',
+    textColor: '#FFFFFF',
     sortOrder: 3,
   },
   {
@@ -33,6 +36,7 @@ const themes = [
     imageUrl: null,
     buttonColor: '#FFFFFF',
     buttonTextColor: '#191F28',
+    textColor: '#FFFFFF',
     sortOrder: 4,
   },
 ];
