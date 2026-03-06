@@ -97,4 +97,18 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { create, save, complete, list, detail, remove };
+// 대표 작품 선택
+async function feature(req, res, next) {
+  try {
+    const result = await artworkService.featureArtwork({
+      artworkId: req.params.id,
+      userId: req.user.id,
+    });
+
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { create, save, complete, list, detail, remove, feature };

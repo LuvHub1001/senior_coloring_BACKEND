@@ -13,6 +13,8 @@ model Theme {
   name             String   @unique
   requiredArtworks Int      @default(0) @map("required_artworks") // 해금에 필요한 완성 작품 수
   imageUrl         String?  @map("image_url") // 테마 배경 이미지 URL
+  buttonColor      String?  @map("button_color") // 버튼 배경색
+  buttonTextColor  String?  @map("button_text_color") // 버튼 텍스트 색상
   sortOrder        Int      @default(0) @map("sort_order")
   createdAt        DateTime @default(now()) @map("created_at")
 
@@ -29,13 +31,15 @@ model User {
   avatarUrl       String?  @map("avatar_url")
   provider        String   // kakao, naver
   providerId      String   @map("provider_id")
-  selectedThemeId Int?     @map("selected_theme_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  selectedThemeId   Int?     @map("selected_theme_id")
+  featuredArtworkId String?  @unique @map("featured_artwork_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  selectedTheme Theme?      @relation(fields: [selectedThemeId], references: [id])
-  artworks      Artwork[]
-  exhibitions   Exhibition[]
+  selectedTheme  Theme?      @relation(fields: [selectedThemeId], references: [id])
+  featuredArtwork Artwork?   @relation("FeaturedArtwork", fields: [featuredArtworkId], references: [id])
+  artworks       Artwork[]
+  exhibitions    Exhibition[]
 
   @@unique([provider, providerId])
   @@map("users")
@@ -66,9 +70,10 @@ model Artwork {
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
-  user       User          @relation(fields: [userId], references: [id])
-  design     Design        @relation(fields: [designId], references: [id])
-  exhibition Exhibition?
+  user         User          @relation(fields: [userId], references: [id])
+  design       Design        @relation(fields: [designId], references: [id])
+  exhibition   Exhibition?
+  featuredBy   User?         @relation("FeaturedArtwork")
 
   @@map("artworks")
 }

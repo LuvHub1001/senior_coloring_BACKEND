@@ -12,6 +12,7 @@ async function getUserProfile(userId) {
       email: true,
       selectedThemeId: true,
       selectedTheme: true,
+      featuredArtworkId: true,
       createdAt: true,
     },
   });

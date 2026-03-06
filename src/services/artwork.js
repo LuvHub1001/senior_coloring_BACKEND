@@ -100,6 +100,14 @@ async function completeArtwork({ artworkId, userId }) {
   // 완성 후 작품 수
   const afterCount = beforeCount + 1;
 
+  // 첫 작품 완성 시 자동으로 대표 작품 설정
+  if (beforeCount === 0) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { featuredArtworkId: artworkId },
+    });
+  }
+
   // 새로 해금된 테마 확인: beforeCount로는 해금 안 됐지만 afterCount로 해금되는 테마
   const unlockedTheme = await prisma.theme.findFirst({
     where: {
@@ -175,6 +183,24 @@ function extractStoragePath(publicUrl) {
   return publicUrl.slice(idx + marker.length);
 }
 
+// 대표 작품 선택
+async function featureArtwork({ artworkId, userId }) {
+  const artwork = await getOwnArtwork(artworkId, userId);
+
+  if (artwork.status !== 'COMPLETED') {
+    const error = new Error('완성된 작품만 대표 작품으로 설정할 수 있습니다.');
+    error.status = 400;
+    throw error;
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { featuredArtworkId: artworkId },
+  });
+
+  return { featuredArtworkId: artworkId };
+}
+
 module.exports = {
   createArtwork,
   saveArtwork,
@@ -182,4 +208,5 @@ module.exports = {
   getMyArtworks,
   getArtworkById,
   deleteArtwork,
+  featureArtwork,
 };

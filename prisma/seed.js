@@ -6,25 +6,33 @@ const themes = [
   {
     name: '화이트 홀',
     requiredArtworks: 0,
-    imageUrl: null, // 테마 이미지 업로드 후 업데이트
+    imageUrl: null,
+    buttonColor: '#333D48',
+    buttonTextColor: '#FFFFFF',
     sortOrder: 1,
   },
   {
     name: '오페라 홀',
     requiredArtworks: 1,
     imageUrl: null,
+    buttonColor: '#FFFFFF',
+    buttonTextColor: '#191F28',
     sortOrder: 2,
   },
   {
     name: '에메랄드 홀',
     requiredArtworks: 10,
     imageUrl: null,
+    buttonColor: '#FFFFFF',
+    buttonTextColor: '#191F28',
     sortOrder: 3,
   },
   {
     name: '골드 홀',
     requiredArtworks: 20,
     imageUrl: null,
+    buttonColor: '#FFFFFF',
+    buttonTextColor: '#191F28',
     sortOrder: 4,
   },
 ];

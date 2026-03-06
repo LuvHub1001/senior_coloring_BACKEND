@@ -24,6 +24,8 @@ async function getThemes(userId) {
     name: theme.name,
     requiredArtworks: theme.requiredArtworks,
     imageUrl: theme.imageUrl,
+    buttonColor: theme.buttonColor,
+    buttonTextColor: theme.buttonTextColor,
     unlocked: completedCount >= theme.requiredArtworks,
     selected: user.selectedThemeId === theme.id,
   }));

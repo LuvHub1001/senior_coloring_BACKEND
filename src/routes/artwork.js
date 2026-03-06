@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { authenticate } = require('../middlewares/auth');
-const { create, save, complete, list, detail, remove } = require('../controllers/artwork');
+const { create, save, complete, list, detail, remove, feature } = require('../controllers/artwork');
 
 const router = express.Router();
 
@@ -36,6 +36,9 @@ router.put('/:id/save', upload.single('image'), save);
 
 // 작품 완성
 router.patch('/:id/complete', complete);
+
+// 대표 작품 선택
+router.patch('/:id/feature', feature);
 
 // 작품 삭제
 router.delete('/:id', remove);
