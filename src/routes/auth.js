@@ -6,11 +6,12 @@ const router = express.Router();
 
 // 로그인 성공 후 JWT 발급
 function handleOAuthCallback(req, res) {
-  const token = generateToken(req.user);
+  const { isNew, ...userData } = req.user;
+  const token = generateToken(userData);
 
   // 프론트엔드로 토큰 전달 (리다이렉트 방식)
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  res.redirect(`${clientUrl}/auth/callback?token=${token}`);
+  res.redirect(`${clientUrl}/auth/callback?token=${token}&isNew=${isNew}`);
 }
 
 // 카카오

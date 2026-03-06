@@ -79,9 +79,10 @@ async function findOrCreateUser({ email, nickname, avatarUrl, provider, provider
     user = await prisma.user.create({
       data: { email, nickname, avatarUrl, provider, providerId },
     });
+    return { ...user, isNew: true };
   }
 
-  return user;
+  return { ...user, isNew: false };
 }
 
 module.exports = passport;
