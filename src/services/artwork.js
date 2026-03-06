@@ -86,11 +86,29 @@ async function saveArtwork({ artworkId, userId, file, progress }) {
 async function completeArtwork({ artworkId, userId }) {
   await getOwnArtwork(artworkId, userId);
 
-  return prisma.artwork.update({
+  // 완성 전 작품 수
+  const beforeCount = await prisma.artwork.count({
+    where: { userId, status: 'COMPLETED' },
+  });
+
+  const artwork = await prisma.artwork.update({
     where: { id: artworkId },
     data: { status: 'COMPLETED', progress: 100 },
     include: { design: true },
   });
+
+  // 완성 후 작품 수
+  const afterCount = beforeCount + 1;
+
+  // 새로 해금된 테마 확인: beforeCount로는 해금 안 됐지만 afterCount로 해금되는 테마
+  const unlockedTheme = await prisma.theme.findFirst({
+    where: {
+      requiredArtworks: { gt: beforeCount, lte: afterCount },
+    },
+    select: { id: true, name: true, imageUrl: true },
+  });
+
+  return { ...artwork, unlockedTheme: unlockedTheme || null };
 }
 
 // 내 작품 목록 조회

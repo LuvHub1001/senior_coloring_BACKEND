@@ -34,6 +34,9 @@
     "passport-naver-v2": "^2.0.8",
     "prisma": "^5.22.0"
   },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "devDependencies": {
     "nodemon": "^3.1.14"
   }

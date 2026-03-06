@@ -10,6 +10,8 @@ async function getUserProfile(userId) {
       nickname: true,
       avatarUrl: true,
       email: true,
+      selectedThemeId: true,
+      selectedTheme: true,
       createdAt: true,
     },
   });

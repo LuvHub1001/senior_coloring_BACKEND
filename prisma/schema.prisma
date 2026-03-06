@@ -7,19 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 전시관 테마
+model Theme {
+  id               Int      @id @default(autoincrement())
+  name             String   @unique
+  requiredArtworks Int      @default(0) @map("required_artworks") // 해금에 필요한 완성 작품 수
+  imageUrl         String?  @map("image_url") // 테마 배경 이미지 URL
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  users User[]
+
+  @@map("themes")
+}
+
 // 사용자
 model User {
-  id         String   @id @default(uuid())
-  email      String?  @unique
-  nickname   String
-  avatarUrl  String?  @map("avatar_url")
-  provider   String   // kakao, naver
-  providerId String   @map("provider_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  email           String?  @unique
+  nickname        String
+  avatarUrl       String?  @map("avatar_url")
+  provider        String   // kakao, naver
+  providerId      String   @map("provider_id")
+  selectedThemeId Int?     @map("selected_theme_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  artworks    Artwork[]
-  exhibitions Exhibition[]
+  selectedTheme Theme?      @relation(fields: [selectedThemeId], references: [id])
+  artworks      Artwork[]
+  exhibitions   Exhibition[]
 
   @@unique([provider, providerId])
   @@map("users")

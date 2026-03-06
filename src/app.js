@@ -7,6 +7,7 @@ const authRouter = require('./routes/auth');
 const userRouter = require('./routes/user');
 const designRouter = require('./routes/design');
 const artworkRouter = require('./routes/artwork');
+const themeRouter = require('./routes/theme');
 const { errorHandler } = require('./middlewares/errorHandler');
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
 app.use('/api/designs', designRouter);
 app.use('/api/artworks', artworkRouter);
+app.use('/api/themes', themeRouter);
 
 // 에러 핸들링
 app.use(errorHandler);
