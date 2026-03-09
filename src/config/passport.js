@@ -1,9 +1,7 @@
 const passport = require('passport');
 const KakaoStrategy = require('passport-kakao').Strategy;
 const { Strategy: NaverStrategy } = require('passport-naver-v2');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('./prisma');
 
 // 카카오 로그인
 passport.use(

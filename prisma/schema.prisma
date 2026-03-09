@@ -41,6 +41,7 @@ model User {
   featuredArtwork Artwork?   @relation("FeaturedArtwork", fields: [featuredArtworkId], references: [id])
   artworks       Artwork[]
   exhibitions    Exhibition[]
+  refreshTokens  RefreshToken[]
 
   @@unique([provider, providerId])
   @@map("users")
@@ -57,6 +58,7 @@ model Design {
 
   artworks Artwork[]
 
+  @@index([category])
   @@map("designs")
 }
 
@@ -76,6 +78,8 @@ model Artwork {
   exhibition   Exhibition?
   featuredBy   User?         @relation("FeaturedArtwork")
 
+  @@index([userId, status])
+  @@index([designId])
   @@map("artworks")
 }
 
@@ -92,6 +96,21 @@ model Exhibition {
   artwork Artwork @relation(fields: [artworkId], references: [id])
 
   @@map("exhibitions")
+}
+
+// Refresh Token
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 enum ArtworkStatus {
