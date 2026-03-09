@@ -3,10 +3,18 @@
   "version": "1.0.0",
   "description": "시니어 컬러링 북_백엔드",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --forceExit --detectOpenHandles",
+    "test:coverage": "jest --forceExit --detectOpenHandles --coverage",
+    "migrate": "prisma migrate deploy",
+    "migrate:dev": "prisma migrate dev",
+    "seed": "prisma db seed",
+    "audit:check": "npm audit --audit-level=high"
   },
   "repository": {
     "type": "git",
@@ -25,6 +33,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.3.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
@@ -32,12 +41,16 @@
     "passport": "^0.7.0",
     "passport-kakao": "^1.0.1",
     "passport-naver-v2": "^2.0.8",
-    "prisma": "^5.22.0"
+    "prisma": "^5.22.0",
+    "winston": "^3.19.0",
+    "zod": "^4.3.6"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
   }
 }

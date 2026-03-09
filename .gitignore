@@ -1,7 +1,33 @@
 node_modules/
-.env
 dist/
-*.log
 
+# 환경변수
+.env
+.env.local
+.env.*.local
+
+# 로그
+*.log
+logs/
+
+# 테스트 커버리지
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Prisma generated
 /src/generated/prisma
+
+# Claude
 .claude/
+
+# npm
+*.tgz
