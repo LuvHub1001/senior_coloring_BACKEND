@@ -4,7 +4,7 @@ const { authenticate } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
 const { uploadLimiter } = require('../middlewares/rateLimiter');
 const { createDesign, listDesigns, designParams } = require('../validators/design');
-const { create, list, detail } = require('../controllers/design');
+const { create, list, detail, categories } = require('../controllers/design');
 
 const router = express.Router();
 
@@ -22,8 +22,15 @@ const upload = multer({
   },
 });
 
-// 도안 등록 (인증 필요)
-router.post('/', authenticate, uploadLimiter, upload.single('image'), validate(createDesign), create);
+// 도안 등록 (인증 필요) - image: 도안(필수), originalImage: 원본 컬러 이미지(선택)
+const uploadFields = upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'originalImage', maxCount: 1 },
+]);
+router.post('/', authenticate, uploadLimiter, uploadFields, validate(createDesign), create);
+
+// 카테고리 목록 조회 (/:id 보다 위에 위치해야 함)
+router.get('/categories', categories);
 
 // 도안 목록 조회
 router.get('/', validate(listDesigns), list);

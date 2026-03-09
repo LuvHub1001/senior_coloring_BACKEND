@@ -51,12 +51,13 @@ model User {
 
 // 컬러링 도안 (원본 템플릿)
 model Design {
-  id          Int      @id @default(autoincrement())
-  title       String
-  category    String
-  imageUrl    String   @map("image_url")
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id               Int      @id @default(autoincrement())
+  title            String
+  category         String
+  imageUrl         String   @map("image_url")           // 색칠용 도안 (흑백 윤곽선)
+  originalImageUrl String?  @map("original_image_url")  // 원본 컬러 이미지 (미리보기용)
+  description      String?
+  createdAt        DateTime @default(now()) @map("created_at")
 
   artworks Artwork[]
 

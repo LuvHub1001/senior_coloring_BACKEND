@@ -5,17 +5,14 @@ const crypto = require('crypto');
 const logger = require('../config/logger');
 const BUCKET_NAME = 'designs';
 
-// 도안 이미지 업로드 + DB 저장
-async function createDesign({ title, category, description, file }) {
-  // 고유 파일명 생성
+// Supabase Storage에 파일 업로드 후 공개 URL 반환
+async function uploadToStorage(file) {
   const ext = path.extname(file.originalname);
   const fileName = `${crypto.randomUUID()}${ext}`;
-  const filePath = fileName;
 
-  // Supabase Storage에 업로드
   const { error: uploadError } = await supabase.storage
     .from(BUCKET_NAME)
-    .upload(filePath, file.buffer, {
+    .upload(fileName, file.buffer, {
       contentType: file.mimetype,
     });
 
@@ -26,10 +23,23 @@ async function createDesign({ title, category, description, file }) {
     throw error;
   }
 
-  // 공개 URL 가져오기
   const { data: urlData } = supabase.storage
     .from(BUCKET_NAME)
-    .getPublicUrl(filePath);
+    .getPublicUrl(fileName);
+
+  return urlData.publicUrl;
+}
+
+// 도안 이미지 업로드 + DB 저장
+async function createDesign({ title, category, description, file, originalFile }) {
+  // 도안 이미지 (흑백 윤곽선) 업로드
+  const imageUrl = await uploadToStorage(file);
+
+  // 원본 컬러 이미지 업로드 (선택)
+  let originalImageUrl = null;
+  if (originalFile) {
+    originalImageUrl = await uploadToStorage(originalFile);
+  }
 
   // DB에 도안 정보 저장
   const design = await prisma.design.create({
@@ -37,7 +47,8 @@ async function createDesign({ title, category, description, file }) {
       title,
       category,
       description: description || null,
-      imageUrl: urlData.publicUrl,
+      imageUrl,
+      originalImageUrl,
     },
   });
 
@@ -67,4 +78,15 @@ async function getDesignById(id) {
   return design;
 }
 
-module.exports = { createDesign, getDesigns, getDesignById };
+// 카테고리 목록 조회
+async function getCategories() {
+  const results = await prisma.design.findMany({
+    select: { category: true },
+    distinct: ['category'],
+    orderBy: { category: 'asc' },
+  });
+
+  return results.map((r) => r.category);
+}
+
+module.exports = { createDesign, getDesigns, getDesignById, getCategories };
