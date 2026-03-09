@@ -1,9 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../config/prisma');
 const supabase = require('../config/supabase');
 const path = require('path');
 const crypto = require('crypto');
-
-const prisma = new PrismaClient();
+const logger = require('../config/logger');
 const BUCKET_NAME = 'designs';
 
 // 도안 이미지 업로드 + DB 저장
@@ -21,7 +20,7 @@ async function createDesign({ title, category, description, file }) {
     });
 
   if (uploadError) {
-    console.error('Supabase upload error:', uploadError);
+    logger.error('Supabase upload error', { error: uploadError.message });
     const error = new Error('이미지 업로드에 실패했습니다.');
     error.status = 500;
     throw error;

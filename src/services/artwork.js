@@ -1,9 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../config/prisma');
 const supabase = require('../config/supabase');
 const path = require('path');
 const crypto = require('crypto');
-
-const prisma = new PrismaClient();
+const logger = require('../config/logger');
 const BUCKET_NAME = 'artworks';
 
 // 색칠 시작 (작품 생성 또는 기존 IN_PROGRESS 반환)
@@ -52,7 +51,7 @@ async function saveArtwork({ artworkId, userId, file, progress }) {
     });
 
   if (uploadError) {
-    console.error('Supabase upload error:', uploadError);
+    logger.error('Supabase upload error', { error: uploadError.message });
     const error = new Error('이미지 업로드에 실패했습니다.');
     error.status = 500;
     throw error;

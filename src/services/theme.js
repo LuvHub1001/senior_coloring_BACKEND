@@ -1,9 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../config/prisma');
 const supabase = require('../config/supabase');
 const path = require('path');
 const crypto = require('crypto');
-
-const prisma = new PrismaClient();
+const logger = require('../config/logger');
 const BUCKET_NAME = 'themes';
 
 // 테마 목록 조회 (유저별 해금 여부 포함)
@@ -81,7 +80,7 @@ async function uploadThemeImage(themeId, file) {
     });
 
   if (uploadError) {
-    console.error('Supabase upload error:', uploadError);
+    logger.error('Supabase upload error', { error: uploadError.message });
     const error = new Error('테마 이미지 업로드에 실패했습니다.');
     error.status = 500;
     throw error;
