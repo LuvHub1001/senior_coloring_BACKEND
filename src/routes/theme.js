@@ -1,6 +1,9 @@
 const express = require('express');
 const multer = require('multer');
 const { authenticate } = require('../middlewares/auth');
+const { validate } = require('../middlewares/validate');
+const { uploadLimiter } = require('../middlewares/rateLimiter');
+const { selectTheme, themeParams } = require('../validators/theme');
 const { list, select, uploadImage } = require('../controllers/theme');
 
 const router = express.Router();
@@ -24,9 +27,9 @@ router.use(authenticate);
 router.get('/', list);
 
 // 테마 선택
-router.patch('/select', select);
+router.patch('/select', validate(selectTheme), select);
 
 // 테마 이미지 업로드 (관리용)
-router.put('/:id/image', upload.single('image'), uploadImage);
+router.put('/:id/image', uploadLimiter, upload.single('image'), validate(themeParams), uploadImage);
 
 module.exports = router;

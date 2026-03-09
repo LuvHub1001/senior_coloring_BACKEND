@@ -15,11 +15,7 @@ async function select(req, res, next) {
   try {
     const { themeId } = req.body;
 
-    if (!themeId) {
-      return res.status(400).json({ success: false, error: 'themeId는 필수입니다.' });
-    }
-
-    const result = await themeService.selectTheme(req.user.id, Number(themeId));
+    const result = await themeService.selectTheme(req.user.id, themeId);
     res.json({ success: true, data: result });
   } catch (err) {
     next(err);
@@ -34,7 +30,7 @@ async function uploadImage(req, res, next) {
     }
 
     const theme = await themeService.uploadThemeImage(
-      Number(req.params.id),
+      req.params.id,
       req.file,
     );
 

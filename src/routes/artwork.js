@@ -1,6 +1,9 @@
 const express = require('express');
 const multer = require('multer');
 const { authenticate } = require('../middlewares/auth');
+const { validate } = require('../middlewares/validate');
+const { uploadLimiter } = require('../middlewares/rateLimiter');
+const { createArtwork, saveArtwork, artworkParams, listArtworks } = require('../validators/artwork');
 const { create, save, complete, list, detail, remove, feature } = require('../controllers/artwork');
 
 const router = express.Router();
@@ -23,24 +26,24 @@ const upload = multer({
 router.use(authenticate);
 
 // 색칠 시작 (작품 생성)
-router.post('/', create);
+router.post('/', validate(createArtwork), create);
 
 // 내 작품 목록 조회
-router.get('/', list);
+router.get('/', validate(listArtworks), list);
 
 // 작품 상세 조회
-router.get('/:id', detail);
+router.get('/:id', validate(artworkParams), detail);
 
 // 임시 저장 (색칠 진행 이미지 업로드)
-router.put('/:id/save', upload.single('image'), save);
+router.put('/:id/save', uploadLimiter, upload.single('image'), validate(saveArtwork), save);
 
 // 작품 완성
-router.patch('/:id/complete', complete);
+router.patch('/:id/complete', validate(artworkParams), complete);
 
 // 대표 작품 선택
-router.patch('/:id/feature', feature);
+router.patch('/:id/feature', validate(artworkParams), feature);
 
 // 작품 삭제
-router.delete('/:id', remove);
+router.delete('/:id', validate(artworkParams), remove);
 
 module.exports = router;

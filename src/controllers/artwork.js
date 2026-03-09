@@ -5,13 +5,9 @@ async function create(req, res, next) {
   try {
     const { designId } = req.body;
 
-    if (!designId) {
-      return res.status(400).json({ success: false, error: 'designId는 필수입니다.' });
-    }
-
     const artwork = await artworkService.createArtwork({
       userId: req.user.id,
-      designId: Number(designId),
+      designId,
     });
 
     res.status(201).json({ success: true, data: artwork });

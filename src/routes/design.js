@@ -1,6 +1,9 @@
 const express = require('express');
 const multer = require('multer');
 const { authenticate } = require('../middlewares/auth');
+const { validate } = require('../middlewares/validate');
+const { uploadLimiter } = require('../middlewares/rateLimiter');
+const { createDesign, listDesigns, designParams } = require('../validators/design');
 const { create, list, detail } = require('../controllers/design');
 
 const router = express.Router();
@@ -20,12 +23,12 @@ const upload = multer({
 });
 
 // 도안 등록 (인증 필요)
-router.post('/', authenticate, upload.single('image'), create);
+router.post('/', authenticate, uploadLimiter, upload.single('image'), validate(createDesign), create);
 
 // 도안 목록 조회
-router.get('/', list);
+router.get('/', validate(listDesigns), list);
 
 // 도안 상세 조회
-router.get('/:id', detail);
+router.get('/:id', validate(designParams), detail);
 
 module.exports = router;
