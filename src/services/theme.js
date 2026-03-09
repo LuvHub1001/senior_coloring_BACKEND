@@ -26,6 +26,8 @@ async function getThemes(userId) {
     buttonColor: theme.buttonColor,
     buttonTextColor: theme.buttonTextColor,
     textColor: theme.textColor,
+    toggleType: theme.toggleType,
+    frameImageUrl: theme.frameImageUrl,
     unlocked: completedCount >= theme.requiredArtworks,
     selected: user.selectedThemeId === theme.id,
   }));
@@ -58,6 +60,84 @@ async function selectTheme(userId, themeId) {
   });
 
   return { selectedThemeId: user.selectedThemeId, theme };
+}
+
+// 테마 생성 (이미지 포함)
+async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType, sortOrder, file, frameFile }) {
+  // 중복 이름 검사
+  const existing = await prisma.theme.findUnique({ where: { name } });
+  if (existing) {
+    const error = new Error('이미 존재하는 테마 이름입니다.');
+    error.status = 409;
+    throw error;
+  }
+
+  let imageUrl = null;
+
+  if (file) {
+    const ext = path.extname(file.originalname);
+    const fileName = `${crypto.randomUUID()}${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+      });
+
+    if (uploadError) {
+      logger.error('Supabase upload error', { error: uploadError.message });
+      const error = new Error('테마 이미지 업로드에 실패했습니다.');
+      error.status = 500;
+      throw error;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(fileName);
+
+    imageUrl = urlData.publicUrl;
+  }
+
+  // 액자 프레임 이미지 업로드
+  let frameImageUrl = null;
+
+  if (frameFile) {
+    const frameExt = path.extname(frameFile.originalname);
+    const frameFileName = `frame_${crypto.randomUUID()}${frameExt}`;
+
+    const { error: frameUploadError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(frameFileName, frameFile.buffer, {
+        contentType: frameFile.mimetype,
+      });
+
+    if (frameUploadError) {
+      logger.error('Supabase frame upload error', { error: frameUploadError.message });
+      const error = new Error('액자 프레임 이미지 업로드에 실패했습니다.');
+      error.status = 500;
+      throw error;
+    }
+
+    const { data: frameUrlData } = supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(frameFileName);
+
+    frameImageUrl = frameUrlData.publicUrl;
+  }
+
+  return prisma.theme.create({
+    data: {
+      name,
+      requiredArtworks: requiredArtworks || 0,
+      buttonColor: buttonColor || null,
+      buttonTextColor: buttonTextColor || null,
+      textColor: textColor || null,
+      toggleType: toggleType || 'LIGHT',
+      frameImageUrl,
+      sortOrder: sortOrder || 0,
+      imageUrl,
+    },
+  });
 }
 
 // 테마 이미지 업로드 (관리용)
@@ -106,4 +186,4 @@ async function uploadThemeImage(themeId, file) {
   });
 }
 
-module.exports = { getThemes, selectTheme, uploadThemeImage };
+module.exports = { getThemes, selectTheme, createTheme, uploadThemeImage };

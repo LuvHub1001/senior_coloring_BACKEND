@@ -22,6 +22,31 @@ async function select(req, res, next) {
   }
 }
 
+// 테마 생성
+async function create(req, res, next) {
+  try {
+    const { name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType, sortOrder } = req.body;
+
+    // req.files: multer .fields() 결과
+    const files = req.files || {};
+    const theme = await themeService.createTheme({
+      name,
+      requiredArtworks,
+      buttonColor,
+      buttonTextColor,
+      textColor,
+      toggleType,
+      sortOrder,
+      file: files.image ? files.image[0] : null,
+      frameFile: files.frameImage ? files.frameImage[0] : null,
+    });
+
+    res.status(201).json({ success: true, data: theme });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // 테마 이미지 업로드 (관리용)
 async function uploadImage(req, res, next) {
   try {
@@ -40,4 +65,4 @@ async function uploadImage(req, res, next) {
   }
 }
 
-module.exports = { list, select, uploadImage };
+module.exports = { list, select, create, uploadImage };

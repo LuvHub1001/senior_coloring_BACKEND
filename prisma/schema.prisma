@@ -16,6 +16,8 @@ model Theme {
   buttonColor      String?  @map("button_color") // 버튼 배경색
   buttonTextColor  String?  @map("button_text_color") // 버튼 텍스트 색상
   textColor        String?  @map("text_color") // 화면 타이틀/본문 텍스트 색상
+  toggleType       ToggleType @default(LIGHT) @map("toggle_type") // 토글 스타일 (밝은/어두운 배경)
+  frameImageUrl    String?  @map("frame_image_url") // 액자 프레임 이미지 URL
   sortOrder        Int      @default(0) @map("sort_order")
   createdAt        DateTime @default(now()) @map("created_at")
 
@@ -116,4 +118,9 @@ model RefreshToken {
 enum ArtworkStatus {
   IN_PROGRESS
   COMPLETED
+}
+
+enum ToggleType {
+  LIGHT
+  DARK
 }
