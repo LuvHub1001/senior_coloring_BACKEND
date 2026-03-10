@@ -85,19 +85,28 @@ async function saveArtwork({ artworkId, userId, file, progress }) {
 async function completeArtwork({ artworkId, userId }) {
   await getOwnArtwork(artworkId, userId);
 
-  // 완성 전 작품 수
-  const beforeCount = await prisma.artwork.count({
-    where: { userId, status: 'COMPLETED' },
+  // 완성 전 누적 완성 수
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { totalCompletedCount: true },
   });
+  const beforeCount = currentUser.totalCompletedCount;
 
-  const artwork = await prisma.artwork.update({
-    where: { id: artworkId },
-    data: { status: 'COMPLETED', progress: 100 },
-    include: { design: true },
-  });
+  const [artwork, user] = await Promise.all([
+    prisma.artwork.update({
+      where: { id: artworkId },
+      data: { status: 'COMPLETED', progress: 100 },
+      include: { design: true },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { totalCompletedCount: { increment: 1 } },
+      select: { totalCompletedCount: true },
+    }),
+  ]);
 
-  // 완성 후 작품 수
-  const afterCount = beforeCount + 1;
+  // 완성 후 누적 완성 수
+  const afterCount = user.totalCompletedCount;
 
   // 첫 작품 완성 시 자동으로 대표 작품 설정
   if (beforeCount === 0) {

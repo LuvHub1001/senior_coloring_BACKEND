@@ -7,16 +7,15 @@ const BUCKET_NAME = 'themes';
 
 // 테마 목록 조회 (유저별 해금 여부 포함)
 async function getThemes(userId) {
-  const [themes, completedCount, user] = await Promise.all([
+  const [themes, user] = await Promise.all([
     prisma.theme.findMany({ orderBy: { sortOrder: 'asc' } }),
-    prisma.artwork.count({
-      where: { userId, status: 'COMPLETED' },
-    }),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { selectedThemeId: true },
+      select: { selectedThemeId: true, totalCompletedCount: true },
     }),
   ]);
+
+  const completedCount = user.totalCompletedCount;
 
   return themes.map((theme) => ({
     id: theme.id,
@@ -41,12 +40,13 @@ async function selectTheme(userId, themeId) {
     throw error;
   }
 
-  // 해금 여부 확인
-  const completedCount = await prisma.artwork.count({
-    where: { userId, status: 'COMPLETED' },
+  // 해금 여부 확인 (누적 완성 수 기준)
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { totalCompletedCount: true },
   });
 
-  if (completedCount < theme.requiredArtworks) {
+  if (currentUser.totalCompletedCount < theme.requiredArtworks) {
     const error = new Error('아직 해금되지 않은 테마입니다.');
     error.status = 403;
     throw error;

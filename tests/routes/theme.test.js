@@ -43,8 +43,7 @@ describe('Theme Routes', () => {
   describe('GET /api/themes', () => {
     test('테마 목록을 해금/선택 여부와 함께 반환한다', async () => {
       mockPrisma.theme.findMany.mockResolvedValue(mockThemes);
-      mockPrisma.artwork.count.mockResolvedValue(1);
-      mockPrisma.user.findUnique.mockResolvedValue({ selectedThemeId: 1 });
+      mockPrisma.user.findUnique.mockResolvedValue({ selectedThemeId: 1, totalCompletedCount: 1 });
 
       const res = await request(app)
         .get('/api/themes')
@@ -68,7 +67,7 @@ describe('Theme Routes', () => {
   describe('PATCH /api/themes/select', () => {
     test('해금된 테마를 선택한다', async () => {
       mockPrisma.theme.findUnique.mockResolvedValue(mockThemes[0]);
-      mockPrisma.artwork.count.mockResolvedValue(5);
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 5 });
       mockPrisma.user.update.mockResolvedValue({ id: 'user-1', selectedThemeId: 1 });
 
       const res = await request(app)
@@ -91,7 +90,7 @@ describe('Theme Routes', () => {
 
     test('미해금 테마 선택 시 403을 반환한다', async () => {
       mockPrisma.theme.findUnique.mockResolvedValue(mockThemes[1]);
-      mockPrisma.artwork.count.mockResolvedValue(1);
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 1 });
 
       const res = await request(app)
         .patch('/api/themes/select')

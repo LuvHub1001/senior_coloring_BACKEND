@@ -75,9 +75,11 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
     const unlockedTheme = { id: 2, name: '바다', imageUrl: null };
 
     mockPrisma.artwork.findUnique.mockResolvedValue(newArtwork);
-    mockPrisma.artwork.count.mockResolvedValue(0); // 첫 작품
+    mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 0 }); // 첫 작품
     mockPrisma.artwork.update.mockResolvedValue(completedArtwork);
-    mockPrisma.user.update.mockResolvedValue({}); // 대표 작품 설정
+    mockPrisma.user.update
+      .mockResolvedValueOnce({ totalCompletedCount: 1 }) // increment
+      .mockResolvedValueOnce({}); // 대표 작품 설정
     mockPrisma.theme.findFirst.mockResolvedValue(unlockedTheme);
 
     const completeRes = await request(app)
@@ -105,7 +107,7 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
       { id: 2, name: '바다', requiredArtworks: 1, sortOrder: 1, imageUrl: null, buttonColor: '#00f', buttonTextColor: '#fff', textColor: '#006' },
     ];
     mockPrisma.theme.findUnique.mockResolvedValue(themes[1]);
-    mockPrisma.artwork.count.mockResolvedValue(1); // 1개 완성
+    mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 1 }); // 누적 1개 완성
     mockPrisma.user.update.mockResolvedValue({ id: 'user-1', selectedThemeId: 2 });
 
     const themeRes = await request(app)

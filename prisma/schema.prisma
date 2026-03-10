@@ -35,9 +35,10 @@ model User {
   provider        String   // kakao, naver
   providerId      String   @map("provider_id")
   selectedThemeId   Int?     @map("selected_theme_id")
-  featuredArtworkId String?  @unique @map("featured_artwork_id")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  featuredArtworkId   String?  @unique @map("featured_artwork_id")
+  totalCompletedCount Int      @default(0) @map("total_completed_count") // 누적 완성 작품 수 (삭제해도 감소하지 않음)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   selectedTheme  Theme?      @relation(fields: [selectedThemeId], references: [id])
   featuredArtwork Artwork?   @relation("FeaturedArtwork", fields: [featuredArtworkId], references: [id])

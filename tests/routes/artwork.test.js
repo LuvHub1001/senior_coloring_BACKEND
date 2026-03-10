@@ -172,12 +172,13 @@ describe('Artwork Routes', () => {
   describe('PATCH /api/artworks/:id/complete', () => {
     test('작품을 완성 처리한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
-      mockPrisma.artwork.count.mockResolvedValue(2);
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 2 });
       mockPrisma.artwork.update.mockResolvedValue({
         ...mockArtwork,
         status: 'COMPLETED',
         progress: 100,
       });
+      mockPrisma.user.update.mockResolvedValue({ totalCompletedCount: 3 });
       mockPrisma.theme.findFirst.mockResolvedValue(null);
 
       const res = await request(app)

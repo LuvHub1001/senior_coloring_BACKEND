@@ -46,39 +46,35 @@ describe('Theme Service', () => {
   describe('getThemes', () => {
     test('테마 목록에 해금 여부와 선택 여부를 포함한다', async () => {
       mockPrisma.theme.findMany.mockResolvedValue(mockThemes);
-      mockPrisma.artwork.count.mockResolvedValue(2);
-      mockPrisma.user.findUnique.mockResolvedValue({ selectedThemeId: 1 });
+      mockPrisma.user.findUnique.mockResolvedValue({ selectedThemeId: 1, totalCompletedCount: 2 });
 
       const result = await getThemes('user-1');
 
       expect(result).toHaveLength(2);
-      // 기본 테마: requiredArtworks=0, 완성작 2개 → 해금
+      // 기본 테마: requiredArtworks=0, 누적 완성 2개 → 해금
       expect(result[0].unlocked).toBe(true);
       expect(result[0].selected).toBe(true);
-      // 바다 테마: requiredArtworks=3, 완성작 2개 → 미해금
+      // 바다 테마: requiredArtworks=3, 누적 완성 2개 → 미해금
       expect(result[1].unlocked).toBe(false);
       expect(result[1].selected).toBe(false);
     });
 
-    test('완성작이 충분하면 모든 테마가 해금된다', async () => {
+    test('누적 완성 수가 충분하면 모든 테마가 해금된다', async () => {
       mockPrisma.theme.findMany.mockResolvedValue(mockThemes);
-      mockPrisma.artwork.count.mockResolvedValue(5);
-      mockPrisma.user.findUnique.mockResolvedValue({ selectedThemeId: null });
+      mockPrisma.user.findUnique.mockResolvedValue({ selectedThemeId: null, totalCompletedCount: 5 });
 
       const result = await getThemes('user-1');
 
       expect(result.every((t) => t.unlocked)).toBe(true);
     });
 
-    test('병렬로 데이터를 조회한다 (3개 쿼리)', async () => {
+    test('병렬로 데이터를 조회한다 (2개 쿼리)', async () => {
       mockPrisma.theme.findMany.mockResolvedValue([]);
-      mockPrisma.artwork.count.mockResolvedValue(0);
-      mockPrisma.user.findUnique.mockResolvedValue({ selectedThemeId: null });
+      mockPrisma.user.findUnique.mockResolvedValue({ selectedThemeId: null, totalCompletedCount: 0 });
 
       await getThemes('user-1');
 
       expect(mockPrisma.theme.findMany).toHaveBeenCalledTimes(1);
-      expect(mockPrisma.artwork.count).toHaveBeenCalledTimes(1);
       expect(mockPrisma.user.findUnique).toHaveBeenCalledTimes(1);
     });
   });
@@ -86,7 +82,7 @@ describe('Theme Service', () => {
   describe('selectTheme', () => {
     test('해금된 테마를 선택한다', async () => {
       mockPrisma.theme.findUnique.mockResolvedValue(mockThemes[0]);
-      mockPrisma.artwork.count.mockResolvedValue(5);
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 5 });
       mockPrisma.user.update.mockResolvedValue({ id: 'user-1', selectedThemeId: 1 });
 
       const result = await selectTheme('user-1', 1);
@@ -105,7 +101,7 @@ describe('Theme Service', () => {
 
     test('미해금 테마를 선택하면 403 에러를 던진다', async () => {
       mockPrisma.theme.findUnique.mockResolvedValue(mockThemes[1]); // 바다: 3개 필요
-      mockPrisma.artwork.count.mockResolvedValue(1); // 완성작 1개
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 1 }); // 누적 완성 1개
 
       await expect(selectTheme('user-1', 2)).rejects.toMatchObject({
         message: '아직 해금되지 않은 테마입니다.',

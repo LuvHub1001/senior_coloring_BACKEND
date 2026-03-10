@@ -12,7 +12,7 @@ const mockPrisma = {
     delete: jest.fn(),
     count: jest.fn(),
   },
-  user: { update: jest.fn() },
+  user: { findUnique: jest.fn(), update: jest.fn() },
   theme: { findFirst: jest.fn() },
 };
 
@@ -94,12 +94,13 @@ describe('Artwork Service', () => {
   describe('completeArtwork', () => {
     test('작품을 완성 처리한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
-      mockPrisma.artwork.count.mockResolvedValue(2);
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 2 });
       mockPrisma.artwork.update.mockResolvedValue({
         ...mockArtwork,
         status: 'COMPLETED',
         progress: 100,
       });
+      mockPrisma.user.update.mockResolvedValue({ totalCompletedCount: 3 });
       mockPrisma.theme.findFirst.mockResolvedValue(null);
 
       const result = await artworkService.completeArtwork({
@@ -118,13 +119,15 @@ describe('Artwork Service', () => {
 
     test('첫 작품 완성 시 대표 작품으로 설정한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
-      mockPrisma.artwork.count.mockResolvedValue(0);
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 0 });
       mockPrisma.artwork.update.mockResolvedValue({
         ...mockArtwork,
         status: 'COMPLETED',
         progress: 100,
       });
-      mockPrisma.user.update.mockResolvedValue({});
+      mockPrisma.user.update
+        .mockResolvedValueOnce({ totalCompletedCount: 1 })
+        .mockResolvedValueOnce({});
       mockPrisma.theme.findFirst.mockResolvedValue(null);
 
       await artworkService.completeArtwork({
@@ -141,12 +144,13 @@ describe('Artwork Service', () => {
     test('작품 완성 시 새 테마가 해금되면 반환한다', async () => {
       const unlockedTheme = { id: 2, name: '바다', imageUrl: 'https://example.com/sea.png' };
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
-      mockPrisma.artwork.count.mockResolvedValue(2);
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 2 });
       mockPrisma.artwork.update.mockResolvedValue({
         ...mockArtwork,
         status: 'COMPLETED',
         progress: 100,
       });
+      mockPrisma.user.update.mockResolvedValue({ totalCompletedCount: 3 });
       mockPrisma.theme.findFirst.mockResolvedValue(unlockedTheme);
 
       const result = await artworkService.completeArtwork({
