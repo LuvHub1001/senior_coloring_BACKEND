@@ -83,9 +83,14 @@ async function saveArtwork({ artworkId, userId, file, progress }) {
 
 // 작품 완성
 async function completeArtwork({ artworkId, userId }) {
-  await getOwnArtwork(artworkId, userId);
+  const existingArtwork = await getOwnArtwork(artworkId, userId);
 
-  // 완성 전 누적 완성 수
+  // 이미 완성된 작품 재저장 → 이미지/상태 유지, 해금 로직 스킵
+  if (existingArtwork.status === 'COMPLETED') {
+    return { ...existingArtwork, unlockedTheme: null };
+  }
+
+  // 최초 완성 (IN_PROGRESS → COMPLETED)
   const currentUser = await prisma.user.findUnique({
     where: { id: userId },
     select: { totalCompletedCount: true },
@@ -105,7 +110,6 @@ async function completeArtwork({ artworkId, userId }) {
     }),
   ]);
 
-  // 완성 후 누적 완성 수
   const afterCount = user.totalCompletedCount;
 
   // 첫 작품 완성 시 자동으로 대표 작품 설정
@@ -116,7 +120,7 @@ async function completeArtwork({ artworkId, userId }) {
     });
   }
 
-  // 새로 해금된 테마 확인: beforeCount로는 해금 안 됐지만 afterCount로 해금되는 테마
+  // 새로 해금된 테마 확인
   const unlockedTheme = await prisma.theme.findFirst({
     where: {
       requiredArtworks: { gt: beforeCount, lte: afterCount },

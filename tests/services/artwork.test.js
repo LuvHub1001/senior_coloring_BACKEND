@@ -161,6 +161,23 @@ describe('Artwork Service', () => {
       expect(result.unlockedTheme).toEqual(unlockedTheme);
     });
 
+    test('이미 완성된 작품 재완성 시 해금 카운트가 증가하지 않는다', async () => {
+      const completedArtwork = { ...mockArtwork, status: 'COMPLETED', progress: 100 };
+      mockPrisma.artwork.findUnique.mockResolvedValue(completedArtwork);
+
+      const result = await artworkService.completeArtwork({
+        artworkId: 'artwork-1',
+        userId: 'user-1',
+      });
+
+      // user.findUnique, user.update, artwork.update 호출되지 않아야 함
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.artwork.update).not.toHaveBeenCalled();
+      expect(result.status).toBe('COMPLETED');
+      expect(result.unlockedTheme).toBeNull();
+    });
+
     test('다른 유저의 작품을 완성하려 하면 403 에러를 던진다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue({
         ...mockArtwork,
