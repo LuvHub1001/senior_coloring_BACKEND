@@ -27,8 +27,6 @@ async function create(req, res, next) {
   try {
     const { name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType, sortOrder } = req.body;
 
-    // req.files: multer .fields() 결과
-    const files = req.files || {};
     const theme = await themeService.createTheme({
       name,
       requiredArtworks,
@@ -37,8 +35,7 @@ async function create(req, res, next) {
       textColor,
       toggleType,
       sortOrder,
-      file: files.image ? files.image[0] : null,
-      frameFile: files.frameImage ? files.frameImage[0] : null,
+      file: req.file || null,
     });
 
     res.status(201).json({ success: true, data: theme });

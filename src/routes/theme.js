@@ -23,11 +23,8 @@ const upload = multer({
 
 router.use(authenticate);
 
-// 테마 생성 (배경 이미지 + 액자 프레임 이미지)
-router.post('/', uploadLimiter, upload.fields([
-  { name: 'image', maxCount: 1 },
-  { name: 'frameImage', maxCount: 1 },
-]), validate(createTheme), create);
+// 테마 생성 (배경 이미지)
+router.post('/', uploadLimiter, upload.single('image'), validate(createTheme), create);
 
 // 테마 목록 조회 (해금 여부 포함)
 router.get('/', list);

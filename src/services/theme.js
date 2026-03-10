@@ -27,7 +27,6 @@ async function getThemes(userId) {
     buttonTextColor: theme.buttonTextColor,
     textColor: theme.textColor,
     toggleType: theme.toggleType,
-    frameImageUrl: theme.frameImageUrl,
     unlocked: completedCount >= theme.requiredArtworks,
     selected: user.selectedThemeId === theme.id,
   }));
@@ -63,7 +62,7 @@ async function selectTheme(userId, themeId) {
 }
 
 // 테마 생성 (이미지 포함)
-async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType, sortOrder, file, frameFile }) {
+async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType, sortOrder, file }) {
   // 중복 이름 검사
   const existing = await prisma.theme.findUnique({ where: { name } });
   if (existing) {
@@ -98,33 +97,6 @@ async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColo
     imageUrl = urlData.publicUrl;
   }
 
-  // 액자 프레임 이미지 업로드
-  let frameImageUrl = null;
-
-  if (frameFile) {
-    const frameExt = path.extname(frameFile.originalname);
-    const frameFileName = `frame_${crypto.randomUUID()}${frameExt}`;
-
-    const { error: frameUploadError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(frameFileName, frameFile.buffer, {
-        contentType: frameFile.mimetype,
-      });
-
-    if (frameUploadError) {
-      logger.error('Supabase frame upload error', { error: frameUploadError.message });
-      const error = new Error('액자 프레임 이미지 업로드에 실패했습니다.');
-      error.status = 500;
-      throw error;
-    }
-
-    const { data: frameUrlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(frameFileName);
-
-    frameImageUrl = frameUrlData.publicUrl;
-  }
-
   return prisma.theme.create({
     data: {
       name,
@@ -133,7 +105,6 @@ async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColo
       buttonTextColor: buttonTextColor || null,
       textColor: textColor || null,
       toggleType: toggleType || 'LIGHT',
-      frameImageUrl,
       sortOrder: sortOrder || 0,
       imageUrl,
     },
