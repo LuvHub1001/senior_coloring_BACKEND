@@ -13,6 +13,7 @@ const userRouter = require('./routes/user');
 const designRouter = require('./routes/design');
 const artworkRouter = require('./routes/artwork');
 const themeRouter = require('./routes/theme');
+const imageRouter = require('./routes/image');
 const prisma = require('./config/prisma');
 
 const app = express();
@@ -90,6 +91,7 @@ app.use('/api/users', userRouter);
 app.use('/api/designs', designRouter);
 app.use('/api/artworks', artworkRouter);
 app.use('/api/themes', themeRouter);
+app.use('/api/images', imageRouter);
 
 // 에러 핸들링
 app.use(errorHandler);
