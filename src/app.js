@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const isProduction = process.env.NODE_ENV === 'production';
 const passport = require('./config/passport');
 const logger = require('./config/logger');
 const { requestId } = require('./middlewares/requestId');
@@ -70,6 +71,18 @@ app.get('/health', async (req, res) => {
     });
   }
 });
+
+// Swagger API 문서 (개발 환경에서만 노출)
+if (!isProduction) {
+  const swaggerUi = require('swagger-ui-express');
+  const swaggerSpec = require('./config/swagger');
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  }));
+}
 
 // 라우터
 app.use('/api/auth', authRouter);

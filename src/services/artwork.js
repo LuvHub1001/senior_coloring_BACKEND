@@ -162,7 +162,21 @@ async function deleteArtwork({ artworkId, userId }) {
     }
   }
 
-  return prisma.artwork.delete({ where: { id: artworkId } });
+  // 트랜잭션으로 연관 데이터 정리 후 삭제
+  return prisma.$transaction(async (tx) => {
+    // 대표 작품인 경우 해제
+    await tx.user.updateMany({
+      where: { featuredArtworkId: artworkId },
+      data: { featuredArtworkId: null },
+    });
+
+    // 연결된 전시 삭제
+    await tx.exhibition.deleteMany({
+      where: { artworkId },
+    });
+
+    return tx.artwork.delete({ where: { id: artworkId } });
+  });
 }
 
 // 본인 작품 조회 (공통 검증)

@@ -12,8 +12,10 @@ const mockPrisma = {
     delete: jest.fn(),
     count: jest.fn(),
   },
-  user: { findUnique: jest.fn(), update: jest.fn() },
+  user: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
   theme: { findFirst: jest.fn() },
+  exhibition: { deleteMany: jest.fn() },
+  $transaction: jest.fn((fn) => fn(mockPrisma)),
 };
 
 jest.mock('@prisma/client', () => ({
