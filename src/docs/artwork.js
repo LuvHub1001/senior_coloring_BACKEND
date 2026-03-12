@@ -11,7 +11,7 @@
  *   post:
  *     tags: [Artworks]
  *     summary: 색칠 시작 (작품 생성)
- *     description: 도안을 선택하여 색칠 시작. 이미 해당 도안으로 진행 중인 작품이 있으면 기존 작품 반환
+ *     description: 도안을 선택하여 색칠 시작. 호출할 때마다 항상 새 작품 생성. 수정하기인 경우 parentArtworkId 전달
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -28,6 +28,11 @@
  *                 minimum: 1
  *                 description: 도안 ID
  *                 example: 1
+ *               rootArtworkId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: "수정하기인 경우 원본(또는 부모) 작품 ID (선택). 서버에서 자동으로 최초 원본을 추적"
+ *                 example: "550e8400-e29b-41d4-a716-446655440000"
  *     responses:
  *       201:
  *         description: 작품 생성 성공
@@ -229,7 +234,7 @@
  *   patch:
  *     tags: [Artworks]
  *     summary: 작품 완성
- *     description: "작품 상태를 COMPLETED로 변경. 최초 완성 시 totalCompletedCount 증가, 첫 완성작은 자동 대표 작품 설정, 새로 해금된 테마 반환"
+ *     description: "작품 상태를 COMPLETED로 변경. 최초 완성 시 totalCompletedCount 증가, 첫 완성작은 자동 대표 작품 설정, 새로 해금된 테마 반환. parentArtworkId가 있는 경우 부모 작품 자동 삭제 및 대표작품 교체 처리"
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -256,11 +261,19 @@
  *                   properties:
  *                     artwork:
  *                       $ref: '#/components/schemas/Artwork'
- *                     newlyUnlockedThemes:
- *                       type: array
- *                       description: 이번 완성으로 새로 해금된 테마 목록
- *                       items:
- *                         $ref: '#/components/schemas/Theme'
+ *                     unlockedTheme:
+ *                       nullable: true
+ *                       description: 이번 완성으로 새로 해금된 테마 (없으면 null)
+ *                       allOf:
+ *                         - $ref: '#/components/schemas/Theme'
+ *                     replacedRoot:
+ *                       type: boolean
+ *                       description: 원본 작품 교체(삭제) 여부
+ *                       example: false
+ *                     updatedFeatured:
+ *                       type: boolean
+ *                       description: 대표 작품 교체 여부
+ *                       example: false
  *       401:
  *         description: 인증 실패
  *       403:

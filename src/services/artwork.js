@@ -6,7 +6,7 @@ const logger = require('../config/logger');
 const BUCKET_NAME = 'artworks';
 
 // 색칠 시작 (항상 새 작품 생성)
-async function createArtwork({ userId, designId }) {
+async function createArtwork({ userId, designId, rootArtworkId }) {
   // 도안 존재 여부 확인
   const design = await prisma.design.findUnique({ where: { id: designId } });
   if (!design) {
@@ -15,10 +15,36 @@ async function createArtwork({ userId, designId }) {
     throw error;
   }
 
+  // rootArtworkId 해소: 항상 최초 원본을 가리키도록 처리
+  let resolvedRootId = null;
+
+  if (rootArtworkId) {
+    const sourceArtwork = await prisma.artwork.findUnique({
+      where: { id: rootArtworkId },
+      select: { id: true, userId: true, rootArtworkId: true },
+    });
+
+    if (!sourceArtwork) {
+      const error = new Error('원본 작품을 찾을 수 없습니다.');
+      error.status = 404;
+      throw error;
+    }
+
+    if (sourceArtwork.userId !== userId) {
+      const error = new Error('접근 권한이 없습니다.');
+      error.status = 403;
+      throw error;
+    }
+
+    // 원본의 rootArtworkId가 있으면 그 값을 사용 (최초 원본), 없으면 전달된 ID가 최초 원본
+    resolvedRootId = sourceArtwork.rootArtworkId || sourceArtwork.id;
+  }
+
   return prisma.artwork.create({
     data: {
       userId,
       designId,
+      rootArtworkId: resolvedRootId,
       status: 'IN_PROGRESS',
     },
     include: { design: true },
@@ -77,13 +103,13 @@ async function completeArtwork({ artworkId, userId }) {
 
   // 이미 완성된 작품 재저장 → 이미지/상태 유지, 해금 로직 스킵
   if (existingArtwork.status === 'COMPLETED') {
-    return { ...existingArtwork, unlockedTheme: null };
+    return { ...existingArtwork, unlockedTheme: null, replacedRoot: false, updatedFeatured: false };
   }
 
   // 최초 완성 (IN_PROGRESS → COMPLETED)
   const currentUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { totalCompletedCount: true },
+    select: { totalCompletedCount: true, featuredArtworkId: true },
   });
   const beforeCount = currentUser.totalCompletedCount;
 
@@ -118,7 +144,46 @@ async function completeArtwork({ artworkId, userId }) {
     select: { id: true, name: true, imageUrl: true },
   });
 
-  return { ...artwork, unlockedTheme: unlockedTheme || null };
+  // 원본 작품 교체 처리 (수정하기로 생성된 작품인 경우)
+  let replacedRoot = false;
+  let updatedFeatured = false;
+
+  if (existingArtwork.rootArtworkId) {
+    const rootId = existingArtwork.rootArtworkId;
+
+    // 원본이 대표 작품이면 새 작품으로 교체
+    if (currentUser.featuredArtworkId === rootId) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { featuredArtworkId: artworkId },
+      });
+      updatedFeatured = true;
+    }
+
+    // 원본 작품 삭제 (Storage 이미지 + 전시 + DB)
+    const rootArtwork = await prisma.artwork.findUnique({
+      where: { id: rootId },
+      select: { userId: true, imageUrl: true },
+    });
+
+    if (rootArtwork && rootArtwork.userId === userId) {
+      if (rootArtwork.imageUrl) {
+        const storagePath = extractStoragePath(rootArtwork.imageUrl);
+        if (storagePath) {
+          await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.exhibition.deleteMany({ where: { artworkId: rootId } });
+        await tx.artwork.delete({ where: { id: rootId } });
+      });
+
+      replacedRoot = true;
+    }
+  }
+
+  return { ...artwork, unlockedTheme: unlockedTheme || null, replacedRoot, updatedFeatured };
 }
 
 // 내 작품 목록 조회

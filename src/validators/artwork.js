@@ -3,6 +3,7 @@ const { z } = require('zod');
 const createArtwork = z.object({
   body: z.object({
     designId: z.coerce.number().int().positive('designId는 양의 정수여야 합니다.'),
+    rootArtworkId: z.string().uuid().optional(),
   }),
 });
 

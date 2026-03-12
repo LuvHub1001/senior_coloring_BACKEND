@@ -90,6 +90,7 @@ const options = {
             id: { type: 'string', format: 'uuid' },
             userId: { type: 'string', format: 'uuid' },
             designId: { type: 'integer' },
+            rootArtworkId: { type: 'string', format: 'uuid', nullable: true, description: '수정하기로 생성된 경우 최초 원본 작품 ID' },
             imageUrl: { type: 'string', nullable: true },
             progress: { type: 'integer', minimum: 0, maximum: 100 },
             status: { type: 'string', enum: ['IN_PROGRESS', 'COMPLETED'] },

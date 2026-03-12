@@ -68,14 +68,15 @@ model Design {
 
 // 사용자 작품 (색칠 결과물)
 model Artwork {
-  id         String        @id @default(uuid())
-  userId     String        @map("user_id")
-  designId   Int           @map("design_id")
-  imageUrl   String?       @map("image_url")
-  progress   Int           @default(0)
-  status     ArtworkStatus @default(IN_PROGRESS)
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
+  id              String        @id @default(uuid())
+  userId          String        @map("user_id")
+  designId        Int           @map("design_id")
+  rootArtworkId   String?       @map("root_artwork_id") // 수정하기로 생성된 경우 최초 원본 작품 ID
+  imageUrl        String?       @map("image_url")
+  progress        Int           @default(0)
+  status          ArtworkStatus @default(IN_PROGRESS)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
 
   user         User          @relation(fields: [userId], references: [id])
   design       Design        @relation(fields: [designId], references: [id])

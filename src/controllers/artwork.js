@@ -3,11 +3,12 @@ const artworkService = require('../services/artwork');
 // 색칠 시작 (작품 생성)
 async function create(req, res, next) {
   try {
-    const { designId } = req.body;
+    const { designId, rootArtworkId } = req.body;
 
     const artwork = await artworkService.createArtwork({
       userId: req.user.id,
       designId,
+      rootArtworkId,
     });
 
     res.status(201).json({ success: true, data: artwork });

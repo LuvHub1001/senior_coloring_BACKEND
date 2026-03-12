@@ -93,12 +93,68 @@ describe('Artwork Service', () => {
         artworkService.createArtwork({ userId: 'user-1', designId: 999 }),
       ).rejects.toMatchObject({ message: '도안을 찾을 수 없습니다.', status: 404 });
     });
+
+    test('rootArtworkId 전달 시 원본의 rootArtworkId가 없으면 해당 ID를 저장한다', async () => {
+      const sourceArtwork = { id: 'root-1', userId: 'user-1', rootArtworkId: null };
+      mockPrisma.design.findUnique.mockResolvedValue(mockDesign);
+      mockPrisma.artwork.findUnique.mockResolvedValue(sourceArtwork);
+      mockPrisma.artwork.create.mockResolvedValue({ ...mockArtwork, rootArtworkId: 'root-1' });
+
+      const result = await artworkService.createArtwork({
+        userId: 'user-1',
+        designId: 1,
+        rootArtworkId: 'root-1',
+      });
+
+      expect(mockPrisma.artwork.create).toHaveBeenCalledWith({
+        data: { userId: 'user-1', designId: 1, rootArtworkId: 'root-1', status: 'IN_PROGRESS' },
+        include: { design: true },
+      });
+      expect(result.rootArtworkId).toBe('root-1');
+    });
+
+    test('rootArtworkId 전달 시 원본의 rootArtworkId가 있으면 그 값을 저장한다 (체인 해소)', async () => {
+      const sourceArtwork = { id: 'child-1', userId: 'user-1', rootArtworkId: 'original-root' };
+      mockPrisma.design.findUnique.mockResolvedValue(mockDesign);
+      mockPrisma.artwork.findUnique.mockResolvedValue(sourceArtwork);
+      mockPrisma.artwork.create.mockResolvedValue({ ...mockArtwork, rootArtworkId: 'original-root' });
+
+      const result = await artworkService.createArtwork({
+        userId: 'user-1',
+        designId: 1,
+        rootArtworkId: 'child-1',
+      });
+
+      expect(mockPrisma.artwork.create).toHaveBeenCalledWith({
+        data: { userId: 'user-1', designId: 1, rootArtworkId: 'original-root', status: 'IN_PROGRESS' },
+        include: { design: true },
+      });
+      expect(result.rootArtworkId).toBe('original-root');
+    });
+
+    test('rootArtworkId가 존재하지 않는 작품이면 404 에러를 던진다', async () => {
+      mockPrisma.design.findUnique.mockResolvedValue(mockDesign);
+      mockPrisma.artwork.findUnique.mockResolvedValue(null);
+
+      await expect(
+        artworkService.createArtwork({ userId: 'user-1', designId: 1, rootArtworkId: 'nonexistent' }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    test('rootArtworkId가 타인의 작품이면 403 에러를 던진다', async () => {
+      mockPrisma.design.findUnique.mockResolvedValue(mockDesign);
+      mockPrisma.artwork.findUnique.mockResolvedValue({ id: 'other-art', userId: 'other-user', rootArtworkId: null });
+
+      await expect(
+        artworkService.createArtwork({ userId: 'user-1', designId: 1, rootArtworkId: 'other-art' }),
+      ).rejects.toMatchObject({ status: 403 });
+    });
   });
 
   describe('completeArtwork', () => {
     test('작품을 완성 처리한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
-      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 2 });
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 2, featuredArtworkId: null });
       mockPrisma.artwork.update.mockResolvedValue({
         ...mockArtwork,
         status: 'COMPLETED',
@@ -123,7 +179,7 @@ describe('Artwork Service', () => {
 
     test('첫 작품 완성 시 대표 작품으로 설정한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
-      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 0 });
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 0, featuredArtworkId: null });
       mockPrisma.artwork.update.mockResolvedValue({
         ...mockArtwork,
         status: 'COMPLETED',
@@ -148,7 +204,7 @@ describe('Artwork Service', () => {
     test('작품 완성 시 새 테마가 해금되면 반환한다', async () => {
       const unlockedTheme = { id: 2, name: '바다', imageUrl: 'https://example.com/sea.png' };
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
-      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 2 });
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 2, featuredArtworkId: null });
       mockPrisma.artwork.update.mockResolvedValue({
         ...mockArtwork,
         status: 'COMPLETED',
@@ -191,6 +247,60 @@ describe('Artwork Service', () => {
       await expect(
         artworkService.completeArtwork({ artworkId: 'artwork-1', userId: 'user-1' }),
       ).rejects.toMatchObject({ status: 403 });
+    });
+
+    test('rootArtworkId가 있으면 원본 작품을 삭제한다', async () => {
+      const artworkWithRoot = { ...mockArtwork, rootArtworkId: 'root-1' };
+      const rootArtwork = { userId: 'user-1', imageUrl: null };
+
+      // getOwnArtwork 호출 (findUnique 1차)
+      mockPrisma.artwork.findUnique
+        .mockResolvedValueOnce(artworkWithRoot) // getOwnArtwork
+        .mockResolvedValueOnce(rootArtwork); // 원본 조회
+
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 2, featuredArtworkId: 'other-art' });
+      mockPrisma.artwork.update.mockResolvedValue({ ...artworkWithRoot, status: 'COMPLETED', progress: 100 });
+      mockPrisma.user.update.mockResolvedValue({ totalCompletedCount: 3 });
+      mockPrisma.theme.findFirst.mockResolvedValue(null);
+      mockPrisma.artwork.delete.mockResolvedValue({});
+
+      const result = await artworkService.completeArtwork({
+        artworkId: 'artwork-1',
+        userId: 'user-1',
+      });
+
+      expect(result.replacedRoot).toBe(true);
+      expect(result.updatedFeatured).toBe(false);
+      expect(mockPrisma.artwork.delete).toHaveBeenCalledWith({ where: { id: 'root-1' } });
+    });
+
+    test('rootArtworkId가 featuredArtworkId이면 대표 작품을 교체한다', async () => {
+      const artworkWithRoot = { ...mockArtwork, rootArtworkId: 'root-1' };
+      const rootArtwork = { userId: 'user-1', imageUrl: null };
+
+      mockPrisma.artwork.findUnique
+        .mockResolvedValueOnce(artworkWithRoot)
+        .mockResolvedValueOnce(rootArtwork);
+
+      mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 2, featuredArtworkId: 'root-1' });
+      mockPrisma.artwork.update.mockResolvedValue({ ...artworkWithRoot, status: 'COMPLETED', progress: 100 });
+      mockPrisma.user.update
+        .mockResolvedValueOnce({ totalCompletedCount: 3 }) // increment
+        .mockResolvedValueOnce({}); // featured 교체
+      mockPrisma.theme.findFirst.mockResolvedValue(null);
+      mockPrisma.artwork.delete.mockResolvedValue({});
+
+      const result = await artworkService.completeArtwork({
+        artworkId: 'artwork-1',
+        userId: 'user-1',
+      });
+
+      expect(result.replacedRoot).toBe(true);
+      expect(result.updatedFeatured).toBe(true);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { featuredArtworkId: 'artwork-1' },
+      });
     });
   });
 
