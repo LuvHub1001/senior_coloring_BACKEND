@@ -32,6 +32,13 @@ const mockPrisma = {
   exhibition: {
     deleteMany: jest.fn(),
   },
+  galleryLike: {
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    delete: jest.fn(),
+    deleteMany: jest.fn(),
+    groupBy: jest.fn(),
+  },
   refreshToken: {
     create: jest.fn(),
     findUnique: jest.fn(),

@@ -45,6 +45,7 @@ model User {
   artworks       Artwork[]
   exhibitions    Exhibition[]
   refreshTokens  RefreshToken[]
+  galleryLikes   GalleryLike[]
 
   @@unique([provider, providerId])
   @@map("users")
@@ -75,6 +76,7 @@ model Artwork {
   imageUrl        String?       @map("image_url")
   progress        Int           @default(0)
   status          ArtworkStatus @default(IN_PROGRESS)
+  likeCount       Int           @default(0) @map("like_count") // 좋아요 수 (비정규화)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -82,10 +84,27 @@ model Artwork {
   design       Design        @relation(fields: [designId], references: [id])
   exhibition   Exhibition?
   featuredBy   User?         @relation("FeaturedArtwork")
+  likes        GalleryLike[]
 
   @@index([userId, status])
   @@index([designId])
+  @@index([status, likeCount]) // 갤러리 인기순 조회
   @@map("artworks")
+}
+
+// 갤러리 좋아요
+model GalleryLike {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  artworkId String   @map("artwork_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artwork Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, artworkId])
+  @@index([artworkId])
+  @@map("gallery_likes")
 }
 
 // 전시 (완성작 공개)
