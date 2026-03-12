@@ -114,11 +114,11 @@ describe('Artwork Service', () => {
       expect(result.rootArtworkId).toBe('root-1');
     });
 
-    test('rootArtworkId 전달 시 원본의 rootArtworkId가 있으면 그 값을 저장한다 (체인 해소)', async () => {
-      const sourceArtwork = { id: 'child-1', userId: 'user-1', rootArtworkId: 'original-root' };
+    test('rootArtworkId 전달 시 직접 부모 ID를 그대로 저장한다 (체인 추적 안 함)', async () => {
+      const sourceArtwork = { id: 'child-1', userId: 'user-1' };
       mockPrisma.design.findUnique.mockResolvedValue(mockDesign);
       mockPrisma.artwork.findUnique.mockResolvedValue(sourceArtwork);
-      mockPrisma.artwork.create.mockResolvedValue({ ...mockArtwork, rootArtworkId: 'original-root' });
+      mockPrisma.artwork.create.mockResolvedValue({ ...mockArtwork, rootArtworkId: 'child-1' });
 
       const result = await artworkService.createArtwork({
         userId: 'user-1',
@@ -127,10 +127,10 @@ describe('Artwork Service', () => {
       });
 
       expect(mockPrisma.artwork.create).toHaveBeenCalledWith({
-        data: { userId: 'user-1', designId: 1, rootArtworkId: 'original-root', status: 'IN_PROGRESS' },
+        data: { userId: 'user-1', designId: 1, rootArtworkId: 'child-1', status: 'IN_PROGRESS' },
         include: { design: true },
       });
-      expect(result.rootArtworkId).toBe('original-root');
+      expect(result.rootArtworkId).toBe('child-1');
     });
 
     test('rootArtworkId가 존재하지 않는 작품이면 404 에러를 던진다', async () => {

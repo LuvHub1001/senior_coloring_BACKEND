@@ -15,13 +15,13 @@ async function createArtwork({ userId, designId, rootArtworkId }) {
     throw error;
   }
 
-  // rootArtworkId 해소: 항상 최초 원본을 가리키도록 처리
+  // rootArtworkId 검증: 프론트가 보낸 직접 부모 ID를 그대로 저장
   let resolvedRootId = null;
 
   if (rootArtworkId) {
     const sourceArtwork = await prisma.artwork.findUnique({
       where: { id: rootArtworkId },
-      select: { id: true, userId: true, rootArtworkId: true },
+      select: { id: true, userId: true },
     });
 
     if (!sourceArtwork) {
@@ -36,8 +36,7 @@ async function createArtwork({ userId, designId, rootArtworkId }) {
       throw error;
     }
 
-    // 원본의 rootArtworkId가 있으면 그 값을 사용 (최초 원본), 없으면 전달된 ID가 최초 원본
-    resolvedRootId = sourceArtwork.rootArtworkId || sourceArtwork.id;
+    resolvedRootId = sourceArtwork.id;
   }
 
   return prisma.artwork.create({
