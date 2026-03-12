@@ -71,17 +71,19 @@ describe('Artwork Service', () => {
       expect(result).toEqual(mockArtwork);
     });
 
-    test('동일 도안에 IN_PROGRESS 작품이 있으면 기존 작품을 반환한다', async () => {
+    test('동일 도안에 IN_PROGRESS 작품이 있어도 새 작품을 생성한다', async () => {
+      const newArtwork = { ...mockArtwork, id: 'artwork-2' };
       mockPrisma.design.findUnique.mockResolvedValue(mockDesign);
-      mockPrisma.artwork.findFirst.mockResolvedValue(mockArtwork);
+      mockPrisma.artwork.create.mockResolvedValue(newArtwork);
 
       const result = await artworkService.createArtwork({
         userId: 'user-1',
         designId: 1,
       });
 
-      expect(mockPrisma.artwork.create).not.toHaveBeenCalled();
-      expect(result).toEqual(mockArtwork);
+      expect(mockPrisma.artwork.findFirst).not.toHaveBeenCalled();
+      expect(mockPrisma.artwork.create).toHaveBeenCalled();
+      expect(result.id).toBe('artwork-2');
     });
 
     test('존재하지 않는 도안이면 404 에러를 던진다', async () => {

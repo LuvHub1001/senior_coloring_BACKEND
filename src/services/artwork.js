@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const logger = require('../config/logger');
 const BUCKET_NAME = 'artworks';
 
-// 색칠 시작 (작품 생성 또는 기존 IN_PROGRESS 반환)
+// 색칠 시작 (항상 새 작품 생성)
 async function createArtwork({ userId, designId }) {
   // 도안 존재 여부 확인
   const design = await prisma.design.findUnique({ where: { id: designId } });
@@ -13,16 +13,6 @@ async function createArtwork({ userId, designId }) {
     const error = new Error('도안을 찾을 수 없습니다.');
     error.status = 404;
     throw error;
-  }
-
-  // 동일 유저 + 동일 도안 + IN_PROGRESS 작품이 있으면 기존 반환
-  const existing = await prisma.artwork.findFirst({
-    where: { userId, designId, status: 'IN_PROGRESS' },
-    include: { design: true },
-  });
-
-  if (existing) {
-    return existing;
   }
 
   return prisma.artwork.create({
