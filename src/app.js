@@ -29,7 +29,19 @@ app.use(requestId);
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: function (origin, callback) {
+      // 허용할 origin 목록 (CLIENT_URL 쉼표 구분 지원)
+      const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+        .split(',')
+        .map((o) => o.trim());
+
+      // 서버 간 요청(origin 없음) 또는 허용된 origin
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS 정책에 의해 차단되었습니다.'));
+      }
+    },
     credentials: true,
   }),
 );
@@ -59,11 +71,7 @@ app.get('/health', async (req, res) => {
 
     res.json({
       success: true,
-      data: {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-      },
+      data: { status: 'ok' },
     });
   } catch {
     res.status(503).json({

@@ -24,8 +24,16 @@ const envSchema = z.object({
   NAVER_CLIENT_SECRET: z.string().optional(),
   NAVER_CALLBACK_URL: z.string().url().optional(),
 
-  // Client (CORS origin)
-  CLIENT_URL: z.string().url().default('http://localhost:5173'),
+  // Client (CORS origin, 쉼표 구분으로 여러 도메인 허용 — 프로덕션에서는 필수)
+  CLIENT_URL: z.string().min(1).default('http://localhost:5173'),
+}).refine((data) => {
+  if (data.NODE_ENV === 'production' && data.CLIENT_URL === 'http://localhost:5173') {
+    return false;
+  }
+  return true;
+}, {
+  message: 'CLIENT_URL은 프로덕션 환경에서 반드시 설정해야 합니다.',
+  path: ['CLIENT_URL'],
 });
 
 function validateEnv() {

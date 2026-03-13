@@ -23,10 +23,10 @@ async function handleOAuthCallback(req, res) {
   const accessToken = generateToken(userData);
   const refresh = await generateRefreshToken(userData.id);
 
-  // 프론트엔드로 토큰 전달 (리다이렉트 방식)
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  // 프론트엔드로 토큰 전달 (hash fragment — 서버 로그/Referer 헤더에 토큰 노출 방지)
+  const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim();
   res.redirect(
-    `${clientUrl}/auth/callback?token=${accessToken}&refreshToken=${refresh.token}&isNew=${isNew}`,
+    `${clientUrl}/auth/callback#token=${accessToken}&refreshToken=${refresh.token}&isNew=${isNew}`,
   );
 }
 

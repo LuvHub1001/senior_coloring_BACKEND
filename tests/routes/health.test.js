@@ -30,8 +30,8 @@ describe('GET /health', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.status).toBe('ok');
-    expect(res.body.data.timestamp).toBeDefined();
-    expect(res.body.data.uptime).toBeDefined();
+    expect(res.body.data.timestamp).toBeUndefined();
+    expect(res.body.data.uptime).toBeUndefined();
   });
 
   test('DB 연결 실패 시 503을 반환한다', async () => {

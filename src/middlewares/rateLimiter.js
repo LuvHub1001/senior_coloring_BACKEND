@@ -29,4 +29,13 @@ const uploadLimiter = rateLimit({
   message: { success: false, error: '업로드 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
 });
 
-module.exports = { apiLimiter, authLimiter, uploadLimiter };
+// 이미지 프록시: 프로덕션 15분당 60회, 개발 15분당 200회
+const proxyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 200 : 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: '이미지 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+});
+
+module.exports = { apiLimiter, authLimiter, uploadLimiter, proxyLimiter };

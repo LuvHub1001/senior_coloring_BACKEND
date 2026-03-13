@@ -34,7 +34,7 @@ describe('GET /api/images/proxy', () => {
       ok: true,
       status: 200,
       headers: { get: (key) => ({ 'content-type': 'image/png', 'content-length': '15' }[key] || null) },
-      arrayBuffer: () => Promise.resolve(fakeImage.buffer),
+      body: (async function* () { yield fakeImage; })(),
     });
 
     const url = `${SUPABASE_URL}/storage/v1/object/public/artworks/test.png`;
@@ -44,7 +44,7 @@ describe('GET /api/images/proxy', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('image/png');
-    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['cache-control']).toContain('max-age=3600');
   });
 

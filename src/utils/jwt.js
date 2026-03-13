@@ -11,12 +11,12 @@ function generateToken(user) {
   return jwt.sign(
     { id: user.id, email: user.email },
     JWT_SECRET,
-    { expiresIn: ACCESS_TOKEN_EXPIRES_IN },
+    { expiresIn: ACCESS_TOKEN_EXPIRES_IN, algorithm: 'HS256' },
   );
 }
 
 function verifyToken(token) {
-  return jwt.verify(token, JWT_SECRET);
+  return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
 }
 
 // Refresh Token 생성 (장기, DB 저장)
