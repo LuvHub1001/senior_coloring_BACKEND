@@ -28,8 +28,9 @@ const mockArtwork = {
   likeCount: 5,
   createdAt: new Date('2026-03-10'),
   status: 'COMPLETED',
-  design: { title: '꽃 도안' },
-  user: { nickname: '테스트유저' },
+  isPublic: true,
+  design: { id: 1, title: '꽃 도안', imageUrl: 'https://storage.supabase.co/designs/flower.png' },
+  user: { id: 'user-10', nickname: '테스트유저' },
   likes: [],
 };
 
@@ -51,8 +52,8 @@ describe('Gallery Routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.artworks).toHaveLength(1);
-      expect(res.body.data.pagination).toBeDefined();
+      expect(res.body.data.content).toHaveLength(1);
+      expect(res.body.data.totalElements).toBeDefined();
     });
 
     it('로그인 상태로 좋아요 여부를 포함하여 조회한다', async () => {
@@ -66,7 +67,7 @@ describe('Gallery Routes', () => {
         .set('Authorization', `Bearer ${testToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.data.artworks[0].isLiked).toBe(true);
+      expect(res.body.data.content[0].isLiked).toBe(true);
     });
 
     it('잘못된 sort 파라미터를 거부한다', async () => {
@@ -99,6 +100,8 @@ describe('Gallery Routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.title).toBe('꽃 도안');
+      expect(res.body.data.author).toEqual({ id: 'user-10', nickname: '테스트유저' });
+      expect(res.body.data.design).toBeDefined();
     });
 
     it('잘못된 UUID를 거부한다', async () => {
@@ -119,7 +122,7 @@ describe('Gallery Routes', () => {
 
     it('로그인 상태로 좋아요를 토글한다', async () => {
       mockPrisma.artwork.findUnique
-        .mockResolvedValueOnce({ id: 'artwork-1', status: 'COMPLETED' })
+        .mockResolvedValueOnce({ id: 'artwork-1', status: 'COMPLETED', isPublic: true })
         .mockResolvedValueOnce({ likeCount: 6 });
       mockPrisma.galleryLike.findUnique.mockResolvedValue(null);
 

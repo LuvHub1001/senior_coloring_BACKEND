@@ -37,7 +37,7 @@ describe('Artwork Validators', () => {
   describe('saveArtwork', () => {
     test('progress 0~100 범위를 통과시킨다', () => {
       const result = saveArtwork.safeParse({
-        params: { id: 'uuid-123' },
+        params: { id: '550e8400-e29b-41d4-a716-446655440000' },
         body: { progress: 50 },
       });
       expect(result.success).toBe(true);
@@ -45,7 +45,7 @@ describe('Artwork Validators', () => {
 
     test('progress 101을 거부한다', () => {
       const result = saveArtwork.safeParse({
-        params: { id: 'uuid-123' },
+        params: { id: '550e8400-e29b-41d4-a716-446655440000' },
         body: { progress: 101 },
       });
       expect(result.success).toBe(false);
@@ -53,7 +53,7 @@ describe('Artwork Validators', () => {
 
     test('progress 없이도 통과한다', () => {
       const result = saveArtwork.safeParse({
-        params: { id: 'uuid-123' },
+        params: { id: '550e8400-e29b-41d4-a716-446655440000' },
         body: {},
       });
       expect(result.success).toBe(true);

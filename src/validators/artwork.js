@@ -9,7 +9,7 @@ const createArtwork = z.object({
 
 const saveArtwork = z.object({
   params: z.object({
-    id: z.string().min(1),
+    id: z.string().uuid('유효한 작품 ID가 아닙니다.'),
   }),
   body: z.object({
     progress: z.coerce.number().min(0).max(100).optional(),
@@ -18,7 +18,7 @@ const saveArtwork = z.object({
 
 const artworkParams = z.object({
   params: z.object({
-    id: z.string().min(1),
+    id: z.string().uuid('유효한 작품 ID가 아닙니다.'),
   }),
 });
 
@@ -28,4 +28,13 @@ const listArtworks = z.object({
   }),
 });
 
-module.exports = { createArtwork, saveArtwork, artworkParams, listArtworks };
+const publishArtwork = z.object({
+  params: z.object({
+    id: z.string().uuid('유효한 작품 ID가 아닙니다.'),
+  }),
+  body: z.object({
+    isPublic: z.boolean(),
+  }),
+});
+
+module.exports = { createArtwork, saveArtwork, artworkParams, listArtworks, publishArtwork };

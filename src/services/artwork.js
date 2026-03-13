@@ -115,7 +115,7 @@ async function completeArtwork({ artworkId, userId }) {
   const [artwork, user] = await Promise.all([
     prisma.artwork.update({
       where: { id: artworkId },
-      data: { status: 'COMPLETED', progress: 100 },
+      data: { status: 'COMPLETED', progress: 100, isPublic: true },
       include: { design: true },
     }),
     prisma.user.update({
@@ -287,6 +287,25 @@ async function featureArtwork({ artworkId, userId }) {
   return { featuredArtworkId: artworkId };
 }
 
+// 작품 공개/비공개 전환
+async function publishArtwork({ artworkId, userId, isPublic }) {
+  const artwork = await getOwnArtwork(artworkId, userId);
+
+  if (artwork.status !== 'COMPLETED') {
+    const error = new Error('완성된 작품만 갤러리에 공개할 수 있습니다.');
+    error.status = 400;
+    throw error;
+  }
+
+  const updated = await prisma.artwork.update({
+    where: { id: artworkId },
+    data: { isPublic },
+    select: { id: true, isPublic: true },
+  });
+
+  return { artworkId: updated.id, isPublic: updated.isPublic };
+}
+
 module.exports = {
   createArtwork,
   saveArtwork,
@@ -295,4 +314,5 @@ module.exports = {
   getArtworkById,
   deleteArtwork,
   featureArtwork,
+  publishArtwork,
 };

@@ -55,7 +55,7 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
 
     // 2. 작품 생성
     const newArtwork = {
-      id: 'artwork-1', userId: 'user-1', designId, status: 'IN_PROGRESS',
+      id: '550e8400-e29b-41d4-a716-446655440000', userId: 'user-1', designId, status: 'IN_PROGRESS',
       progress: 0, imageUrl: null, design: mockDesign,
     };
     mockPrisma.design.findUnique.mockResolvedValue(mockDesign);
@@ -83,7 +83,7 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
     mockPrisma.theme.findFirst.mockResolvedValue(unlockedTheme);
 
     const completeRes = await request(app)
-      .patch('/api/artworks/artwork-1/complete')
+      .patch('/api/artworks/550e8400-e29b-41d4-a716-446655440000/complete')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
@@ -95,11 +95,11 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
     mockPrisma.user.update.mockResolvedValue({});
 
     const featureRes = await request(app)
-      .patch('/api/artworks/artwork-1/feature')
+      .patch('/api/artworks/550e8400-e29b-41d4-a716-446655440000/feature')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(featureRes.body.data.featuredArtworkId).toBe('artwork-1');
+    expect(featureRes.body.data.featuredArtworkId).toBe('550e8400-e29b-41d4-a716-446655440000');
 
     // 5. 해금된 테마 선택
     const themes = [
@@ -168,7 +168,7 @@ describe('통합 워크플로우: 인증 흐름', () => {
 describe('통합: 권한 검증', () => {
   test('타인의 작품에 대한 모든 조작이 403으로 차단된다', async () => {
     const otherUserArtwork = {
-      id: 'artwork-other', userId: 'other-user', designId: 1,
+      id: '660e8400-e29b-41d4-a716-446655440000', userId: 'other-user', designId: 1,
       status: 'IN_PROGRESS', progress: 50, imageUrl: null,
       design: { id: 1, title: '꽃', category: '자연' },
     };
@@ -177,25 +177,25 @@ describe('통합: 권한 검증', () => {
 
     // 조회
     await request(app)
-      .get('/api/artworks/artwork-other')
+      .get('/api/artworks/660e8400-e29b-41d4-a716-446655440000')
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
 
     // 완성
     await request(app)
-      .patch('/api/artworks/artwork-other/complete')
+      .patch('/api/artworks/660e8400-e29b-41d4-a716-446655440000/complete')
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
 
     // 대표 설정
     await request(app)
-      .patch('/api/artworks/artwork-other/feature')
+      .patch('/api/artworks/660e8400-e29b-41d4-a716-446655440000/feature')
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
 
     // 삭제
     await request(app)
-      .delete('/api/artworks/artwork-other')
+      .delete('/api/artworks/660e8400-e29b-41d4-a716-446655440000')
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
   });

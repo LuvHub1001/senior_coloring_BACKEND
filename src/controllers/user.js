@@ -1,4 +1,4 @@
-const { getUserProfile } = require('../services/user');
+const { getUserProfile, updateNickname } = require('../services/user');
 
 async function getMe(req, res, next) {
   try {
@@ -9,4 +9,13 @@ async function getMe(req, res, next) {
   }
 }
 
-module.exports = { getMe };
+async function patchNickname(req, res, next) {
+  try {
+    const result = await updateNickname(req.user.id, req.body.nickname);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getMe, patchNickname };

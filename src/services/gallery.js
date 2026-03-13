@@ -1,8 +1,11 @@
 const prisma = require('../config/prisma');
 
-// 갤러리 작품 목록 조회 (커서 기반이 아닌 오프셋 페이지네이션 - 프론트 요구사항)
+// 갤러리 작품 목록 조회 (공개된 완성 작품만)
 async function getGalleryArtworks({ sort, page, size, userId }) {
+  page = Number(page);
+  size = Number(size);
   const skip = (page - 1) * size;
+  const where = { status: 'COMPLETED', isPublic: true, imageUrl: { not: null } };
 
   const orderBy =
     sort === 'popular'
@@ -11,14 +14,14 @@ async function getGalleryArtworks({ sort, page, size, userId }) {
 
   const [artworks, totalCount] = await Promise.all([
     prisma.artwork.findMany({
-      where: { status: 'COMPLETED', imageUrl: { not: null } },
+      where,
       select: {
         id: true,
         imageUrl: true,
         likeCount: true,
         createdAt: true,
         design: { select: { title: true } },
-        user: { select: { nickname: true } },
+        user: { select: { id: true, nickname: true } },
         ...(userId && {
           likes: {
             where: { userId },
@@ -30,32 +33,35 @@ async function getGalleryArtworks({ sort, page, size, userId }) {
       skip,
       take: size,
     }),
-    prisma.artwork.count({
-      where: { status: 'COMPLETED', imageUrl: { not: null } },
-    }),
+    prisma.artwork.count({ where }),
   ]);
 
+  const totalPages = Math.ceil(totalCount / size);
+
   return {
-    artworks: artworks.map((a) => ({
-      id: a.id,
-      imageUrl: a.imageUrl,
+    content: artworks.map((a) => ({
+      artworkId: a.id,
       title: a.design.title,
-      authorName: a.user.nickname,
-      createdAt: a.createdAt,
+      imageUrl: a.imageUrl,
+      author: {
+        id: a.user.id,
+        nickname: a.user.nickname,
+      },
       likeCount: a.likeCount,
       isLiked: userId ? a.likes?.length > 0 : false,
+      createdAt: a.createdAt,
     })),
-    pagination: {
-      page,
-      size,
-      totalCount,
-      totalPages: Math.ceil(totalCount / size),
-    },
+    page: page - 1, // 0-based page (프론트 무한스크롤 대응)
+    size,
+    totalElements: totalCount,
+    totalPages,
+    last: page >= totalPages,
   };
 }
 
 // 오늘의 인기 작품 (오늘 받은 좋아요 기준 상위)
 async function getPopularArtworks({ size, userId }) {
+  size = Number(size);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -70,22 +76,21 @@ async function getPopularArtworks({ size, userId }) {
 
   if (popularArtworkIds.length === 0) {
     // 오늘 좋아요가 없으면 전체 인기순 fallback
-    return getGalleryArtworks({ sort: 'popular', page: 1, size, userId }).then(
-      (result) => result.artworks,
-    );
+    const result = await getGalleryArtworks({ sort: 'popular', page: 1, size, userId });
+    return result.content;
   }
 
   const ids = popularArtworkIds.map((g) => g.artworkId);
 
   const artworks = await prisma.artwork.findMany({
-    where: { id: { in: ids }, status: 'COMPLETED' },
+    where: { id: { in: ids }, status: 'COMPLETED', isPublic: true },
     select: {
       id: true,
       imageUrl: true,
       likeCount: true,
       createdAt: true,
       design: { select: { title: true } },
-      user: { select: { nickname: true } },
+      user: { select: { id: true, nickname: true } },
       ...(userId && {
         likes: {
           where: { userId },
@@ -100,13 +105,16 @@ async function getPopularArtworks({ size, userId }) {
   artworks.sort((a, b) => orderMap.get(a.id) - orderMap.get(b.id));
 
   return artworks.map((a) => ({
-    id: a.id,
-    imageUrl: a.imageUrl,
+    artworkId: a.id,
     title: a.design.title,
-    authorName: a.user.nickname,
-    createdAt: a.createdAt,
+    imageUrl: a.imageUrl,
+    author: {
+      id: a.user.id,
+      nickname: a.user.nickname,
+    },
     likeCount: a.likeCount,
     isLiked: userId ? a.likes?.length > 0 : false,
+    createdAt: a.createdAt,
   }));
 }
 
@@ -120,8 +128,9 @@ async function getGalleryArtworkDetail({ artworkId, userId }) {
       likeCount: true,
       createdAt: true,
       status: true,
-      design: { select: { title: true } },
-      user: { select: { nickname: true } },
+      isPublic: true,
+      design: { select: { id: true, title: true, imageUrl: true } },
+      user: { select: { id: true, nickname: true } },
       ...(userId && {
         likes: {
           where: { userId },
@@ -131,32 +140,40 @@ async function getGalleryArtworkDetail({ artworkId, userId }) {
     },
   });
 
-  if (!artwork || artwork.status !== 'COMPLETED') {
+  if (!artwork || artwork.status !== 'COMPLETED' || !artwork.isPublic) {
     const error = new Error('작품을 찾을 수 없습니다.');
     error.status = 404;
     throw error;
   }
 
   return {
-    id: artwork.id,
-    imageUrl: artwork.imageUrl,
+    artworkId: artwork.id,
     title: artwork.design.title,
-    authorName: artwork.user.nickname,
-    createdAt: artwork.createdAt,
+    imageUrl: artwork.imageUrl,
+    author: {
+      id: artwork.user.id,
+      nickname: artwork.user.nickname,
+    },
     likeCount: artwork.likeCount,
     isLiked: userId ? artwork.likes?.length > 0 : false,
+    createdAt: artwork.createdAt,
+    design: {
+      id: artwork.design.id,
+      title: artwork.design.title,
+      imageUrl: artwork.design.imageUrl,
+    },
   };
 }
 
 // 좋아요 토글
 async function toggleLike({ artworkId, userId }) {
-  // 작품 존재 + COMPLETED 확인
+  // 작품 존재 + COMPLETED + 공개 확인
   const artwork = await prisma.artwork.findUnique({
     where: { id: artworkId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, isPublic: true },
   });
 
-  if (!artwork || artwork.status !== 'COMPLETED') {
+  if (!artwork || artwork.status !== 'COMPLETED' || !artwork.isPublic) {
     const error = new Error('작품을 찾을 수 없습니다.');
     error.status = 404;
     throw error;

@@ -32,7 +32,7 @@ const token = generateToken(testUser);
 
 const mockDesign = { id: 1, title: '꽃', category: '자연', imageUrl: 'https://example.com/d.png' };
 const mockArtwork = {
-  id: 'artwork-1',
+  id: '550e8400-e29b-41d4-a716-446655440000',
   userId: 'user-1',
   designId: 1,
   status: 'IN_PROGRESS',
@@ -138,18 +138,18 @@ describe('Artwork Routes', () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
 
       const res = await request(app)
-        .get('/api/artworks/artwork-1')
+        .get('/api/artworks/550e8400-e29b-41d4-a716-446655440000')
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.data.id).toBe('artwork-1');
+      expect(res.body.data.id).toBe('550e8400-e29b-41d4-a716-446655440000');
     });
 
     test('존재하지 않는 작품은 404를 반환한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(null);
 
       const res = await request(app)
-        .get('/api/artworks/nonexistent')
+        .get('/api/artworks/660e8400-e29b-41d4-a716-446655440000')
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(404);
@@ -162,7 +162,7 @@ describe('Artwork Routes', () => {
       });
 
       const res = await request(app)
-        .get('/api/artworks/artwork-1')
+        .get('/api/artworks/550e8400-e29b-41d4-a716-446655440000')
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(403);
@@ -182,7 +182,7 @@ describe('Artwork Routes', () => {
       mockPrisma.theme.findFirst.mockResolvedValue(null);
 
       const res = await request(app)
-        .patch('/api/artworks/artwork-1/complete')
+        .patch('/api/artworks/550e8400-e29b-41d4-a716-446655440000/complete')
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
@@ -199,18 +199,18 @@ describe('Artwork Routes', () => {
       mockPrisma.user.update.mockResolvedValue({});
 
       const res = await request(app)
-        .patch('/api/artworks/artwork-1/feature')
+        .patch('/api/artworks/550e8400-e29b-41d4-a716-446655440000/feature')
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.data.featuredArtworkId).toBe('artwork-1');
+      expect(res.body.data.featuredArtworkId).toBe('550e8400-e29b-41d4-a716-446655440000');
     });
 
     test('미완성 작품은 대표 작품으로 설정할 수 없다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
 
       const res = await request(app)
-        .patch('/api/artworks/artwork-1/feature')
+        .patch('/api/artworks/550e8400-e29b-41d4-a716-446655440000/feature')
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(400);
@@ -223,7 +223,7 @@ describe('Artwork Routes', () => {
       mockPrisma.artwork.delete.mockResolvedValue(mockArtwork);
 
       const res = await request(app)
-        .delete('/api/artworks/artwork-1')
+        .delete('/api/artworks/550e8400-e29b-41d4-a716-446655440000')
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);

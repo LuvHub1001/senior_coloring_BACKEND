@@ -38,8 +38,9 @@ const mockArtwork = {
   likeCount: 5,
   createdAt: new Date('2026-03-10'),
   status: 'COMPLETED',
-  design: { title: '꽃 도안' },
-  user: { nickname: '테스트유저' },
+  isPublic: true,
+  design: { id: 1, title: '꽃 도안', imageUrl: 'https://storage.supabase.co/designs/flower.png' },
+  user: { id: 'user-10', nickname: '테스트유저' },
   likes: [],
 };
 
@@ -60,26 +61,25 @@ describe('Gallery Service', () => {
         userId: null,
       });
 
-      expect(result.artworks).toHaveLength(1);
-      expect(result.artworks[0]).toEqual({
-        id: 'artwork-1',
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0]).toEqual({
+        artworkId: 'artwork-1',
         imageUrl: mockArtwork.imageUrl,
         title: '꽃 도안',
-        authorName: '테스트유저',
+        author: { id: 'user-10', nickname: '테스트유저' },
         createdAt: mockArtwork.createdAt,
         likeCount: 5,
         isLiked: false,
       });
-      expect(result.pagination).toEqual({
-        page: 1,
-        size: 20,
-        totalCount: 1,
-        totalPages: 1,
-      });
+      expect(result.page).toBe(0);
+      expect(result.size).toBe(20);
+      expect(result.totalElements).toBe(1);
+      expect(result.totalPages).toBe(1);
+      expect(result.last).toBe(true);
 
       expect(mockPrisma.artwork.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { status: 'COMPLETED', imageUrl: { not: null } },
+          where: { status: 'COMPLETED', isPublic: true, imageUrl: { not: null } },
           orderBy: [{ createdAt: 'desc' }],
           skip: 0,
           take: 20,
@@ -112,7 +112,7 @@ describe('Gallery Service', () => {
         userId: 'user-1',
       });
 
-      expect(result.artworks[0].isLiked).toBe(true);
+      expect(result.content[0].isLiked).toBe(true);
     });
 
     it('페이지네이션이 올바르게 동작한다', async () => {
@@ -129,7 +129,8 @@ describe('Gallery Service', () => {
       expect(mockPrisma.artwork.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ skip: 20, take: 10 }),
       );
-      expect(result.pagination.totalPages).toBe(5);
+      expect(result.totalPages).toBe(5);
+      expect(result.last).toBe(false);
     });
   });
 
@@ -142,9 +143,14 @@ describe('Gallery Service', () => {
         userId: null,
       });
 
-      expect(result.id).toBe('artwork-1');
+      expect(result.artworkId).toBe('artwork-1');
       expect(result.title).toBe('꽃 도안');
-      expect(result.authorName).toBe('테스트유저');
+      expect(result.author).toEqual({ id: 'user-10', nickname: '테스트유저' });
+      expect(result.design).toEqual({
+        id: 1,
+        title: '꽃 도안',
+        imageUrl: 'https://storage.supabase.co/designs/flower.png',
+      });
     });
 
     it('존재하지 않는 작품 조회 시 404 에러', async () => {
@@ -165,12 +171,23 @@ describe('Gallery Service', () => {
         getGalleryArtworkDetail({ artworkId: 'artwork-1', userId: null }),
       ).rejects.toThrow('작품을 찾을 수 없습니다.');
     });
+
+    it('비공개 작품 조회 시 404 에러', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        ...mockArtwork,
+        isPublic: false,
+      });
+
+      await expect(
+        getGalleryArtworkDetail({ artworkId: 'artwork-1', userId: null }),
+      ).rejects.toThrow('작품을 찾을 수 없습니다.');
+    });
   });
 
   describe('toggleLike', () => {
     it('좋아요를 추가한다', async () => {
       mockPrisma.artwork.findUnique
-        .mockResolvedValueOnce({ id: 'artwork-1', status: 'COMPLETED' })
+        .mockResolvedValueOnce({ id: 'artwork-1', status: 'COMPLETED', isPublic: true })
         .mockResolvedValueOnce({ likeCount: 6 });
       mockPrisma.galleryLike.findUnique.mockResolvedValue(null);
       mockPrisma.galleryLike.create.mockResolvedValue({});
@@ -187,7 +204,7 @@ describe('Gallery Service', () => {
 
     it('좋아요를 취소한다', async () => {
       mockPrisma.artwork.findUnique
-        .mockResolvedValueOnce({ id: 'artwork-1', status: 'COMPLETED' })
+        .mockResolvedValueOnce({ id: 'artwork-1', status: 'COMPLETED', isPublic: true })
         .mockResolvedValueOnce({ likeCount: 4 });
       mockPrisma.galleryLike.findUnique.mockResolvedValue({ id: 'like-1' });
       mockPrisma.galleryLike.delete.mockResolvedValue({});
@@ -207,6 +224,18 @@ describe('Gallery Service', () => {
 
       await expect(
         toggleLike({ artworkId: 'nonexistent', userId: 'user-1' }),
+      ).rejects.toThrow('작품을 찾을 수 없습니다.');
+    });
+
+    it('비공개 작품에 좋아요 시 404 에러', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        id: 'artwork-1',
+        status: 'COMPLETED',
+        isPublic: false,
+      });
+
+      await expect(
+        toggleLike({ artworkId: 'artwork-1', userId: 'user-1' }),
       ).rejects.toThrow('작품을 찾을 수 없습니다.');
     });
   });
@@ -232,7 +261,7 @@ describe('Gallery Service', () => {
       const result = await getPopularArtworks({ size: 10, userId: null });
 
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('artwork-1');
+      expect(result[0].artworkId).toBe('artwork-1');
     });
   });
 });

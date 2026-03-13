@@ -108,4 +108,19 @@ async function feature(req, res, next) {
   }
 }
 
-module.exports = { create, save, complete, list, detail, remove, feature };
+// 작품 공개/비공개 전환
+async function publish(req, res, next) {
+  try {
+    const result = await artworkService.publishArtwork({
+      artworkId: req.params.id,
+      userId: req.user.id,
+      isPublic: req.body.isPublic,
+    });
+
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { create, save, complete, list, detail, remove, feature, publish };

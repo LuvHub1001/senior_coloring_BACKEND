@@ -24,4 +24,26 @@ async function getUserProfile(userId) {
   return user;
 }
 
-module.exports = { getUserProfile };
+// 닉네임 변경
+async function updateNickname(userId, nickname) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!user) {
+    const error = new Error('사용자를 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { nickname },
+    select: { id: true, nickname: true },
+  });
+
+  return updated;
+}
+
+module.exports = { getUserProfile, updateNickname };
