@@ -121,10 +121,11 @@ describe('Gallery Routes', () => {
     });
 
     it('로그인 상태로 좋아요를 토글한다', async () => {
-      mockPrisma.artwork.findUnique
-        .mockResolvedValueOnce({ id: 'artwork-1', status: 'COMPLETED', isPublic: true })
-        .mockResolvedValueOnce({ likeCount: 6 });
-      mockPrisma.galleryLike.findUnique.mockResolvedValue(null);
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        id: 'artwork-1', status: 'COMPLETED', isPublic: true,
+        likes: [],
+      });
+      mockPrisma.$transaction.mockResolvedValueOnce([{}, { likeCount: 6 }]);
 
       const res = await request(app)
         .post('/api/gallery/artworks/550e8400-e29b-41d4-a716-446655440000/like')

@@ -106,6 +106,7 @@ model GalleryLike {
 
   @@unique([userId, artworkId])
   @@index([artworkId])
+  @@index([createdAt]) // 오늘의 인기 작품 쿼리 최적화
   @@map("gallery_likes")
 }
 

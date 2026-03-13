@@ -186,9 +186,7 @@ describe('Artwork Service', () => {
         status: 'COMPLETED',
         progress: 100,
       });
-      mockPrisma.user.update
-        .mockResolvedValueOnce({ totalCompletedCount: 1 })
-        .mockResolvedValueOnce({});
+      mockPrisma.user.update.mockResolvedValue({ totalCompletedCount: 1 });
       mockPrisma.theme.findFirst.mockResolvedValue(null);
 
       await artworkService.completeArtwork({
@@ -196,9 +194,14 @@ describe('Artwork Service', () => {
         userId: 'user-1',
       });
 
+      // 첫 작품이면 increment + featuredArtworkId를 한 번에 업데이트
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { featuredArtworkId: 'artwork-1' },
+        data: {
+          totalCompletedCount: { increment: 1 },
+          featuredArtworkId: 'artwork-1',
+        },
+        select: { totalCompletedCount: true },
       });
     });
 

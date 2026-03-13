@@ -112,6 +112,12 @@ async function completeArtwork({ artworkId, userId }) {
   });
   const beforeCount = currentUser.totalCompletedCount;
 
+  // 첫 작품이면 대표 작품 설정도 함께 처리 (user update 1회로 통합)
+  const userUpdateData = { totalCompletedCount: { increment: 1 } };
+  if (beforeCount === 0) {
+    userUpdateData.featuredArtworkId = artworkId;
+  }
+
   const [artwork, user] = await Promise.all([
     prisma.artwork.update({
       where: { id: artworkId },
@@ -120,20 +126,12 @@ async function completeArtwork({ artworkId, userId }) {
     }),
     prisma.user.update({
       where: { id: userId },
-      data: { totalCompletedCount: { increment: 1 } },
+      data: userUpdateData,
       select: { totalCompletedCount: true },
     }),
   ]);
 
   const afterCount = user.totalCompletedCount;
-
-  // 첫 작품 완성 시 자동으로 대표 작품 설정
-  if (beforeCount === 0) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { featuredArtworkId: artworkId },
-    });
-  }
 
   // 새로 해금된 테마 확인
   const unlockedTheme = await prisma.theme.findFirst({
@@ -207,7 +205,7 @@ async function getArtworkById({ artworkId, userId }) {
 
 // 작품 삭제
 async function deleteArtwork({ artworkId, userId }) {
-  const artwork = await getOwnArtwork(artworkId, userId);
+  const artwork = await getOwnArtwork(artworkId, userId, { includeDesign: false });
 
   // Storage 이미지 삭제
   if (artwork.imageUrl) {
@@ -239,11 +237,11 @@ async function deleteArtwork({ artworkId, userId }) {
   });
 }
 
-// 본인 작품 조회 (공통 검증)
-async function getOwnArtwork(artworkId, userId) {
+// 본인 작품 조회 (공통 검증, includeDesign으로 JOIN 제어)
+async function getOwnArtwork(artworkId, userId, { includeDesign = true } = {}) {
   const artwork = await prisma.artwork.findUnique({
     where: { id: artworkId },
-    include: { design: true },
+    ...(includeDesign && { include: { design: true } }),
   });
 
   if (!artwork) {
@@ -289,7 +287,7 @@ async function featureArtwork({ artworkId, userId }) {
 
 // 작품 공개/비공개 전환
 async function publishArtwork({ artworkId, userId, isPublic }) {
-  const artwork = await getOwnArtwork(artworkId, userId);
+  const artwork = await getOwnArtwork(artworkId, userId, { includeDesign: false });
 
   if (artwork.status !== 'COMPLETED') {
     const error = new Error('완성된 작품만 갤러리에 공개할 수 있습니다.');

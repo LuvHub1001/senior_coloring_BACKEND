@@ -167,10 +167,18 @@ async function getGalleryArtworkDetail({ artworkId, userId }) {
 
 // 좋아요 토글
 async function toggleLike({ artworkId, userId }) {
-  // 작품 존재 + COMPLETED + 공개 확인
+  // 작품 존재 + COMPLETED + 공개 확인 + 좋아요 여부를 한 번에 조회
   const artwork = await prisma.artwork.findUnique({
     where: { id: artworkId },
-    select: { id: true, status: true, isPublic: true },
+    select: {
+      id: true,
+      status: true,
+      isPublic: true,
+      likes: {
+        where: { userId },
+        select: { id: true },
+      },
+    },
   });
 
   if (!artwork || artwork.status !== 'COMPLETED' || !artwork.isPublic) {
@@ -179,44 +187,33 @@ async function toggleLike({ artworkId, userId }) {
     throw error;
   }
 
-  // 기존 좋아요 확인
-  const existingLike = await prisma.galleryLike.findUnique({
-    where: { userId_artworkId: { userId, artworkId } },
-  });
+  const existingLike = artwork.likes[0];
 
   if (existingLike) {
-    // 좋아요 취소
-    await prisma.$transaction([
+    // 좋아요 취소 — update에서 반환값으로 likeCount 획득
+    const [, updated] = await prisma.$transaction([
       prisma.galleryLike.delete({ where: { id: existingLike.id } }),
       prisma.artwork.update({
         where: { id: artworkId },
         data: { likeCount: { decrement: 1 } },
+        select: { likeCount: true },
       }),
     ]);
-
-    const updated = await prisma.artwork.findUnique({
-      where: { id: artworkId },
-      select: { likeCount: true },
-    });
 
     return { isLiked: false, likeCount: updated.likeCount };
   }
 
   // 좋아요 추가
-  await prisma.$transaction([
+  const [, updated] = await prisma.$transaction([
     prisma.galleryLike.create({
       data: { userId, artworkId },
     }),
     prisma.artwork.update({
       where: { id: artworkId },
       data: { likeCount: { increment: 1 } },
+      select: { likeCount: true },
     }),
   ]);
-
-  const updated = await prisma.artwork.findUnique({
-    where: { id: artworkId },
-    select: { likeCount: true },
-  });
 
   return { isLiked: true, likeCount: updated.likeCount };
 }

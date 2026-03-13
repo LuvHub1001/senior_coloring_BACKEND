@@ -186,13 +186,11 @@ describe('Gallery Service', () => {
 
   describe('toggleLike', () => {
     it('좋아요를 추가한다', async () => {
-      mockPrisma.artwork.findUnique
-        .mockResolvedValueOnce({ id: 'artwork-1', status: 'COMPLETED', isPublic: true })
-        .mockResolvedValueOnce({ likeCount: 6 });
-      mockPrisma.galleryLike.findUnique.mockResolvedValue(null);
-      mockPrisma.galleryLike.create.mockResolvedValue({});
-      mockPrisma.artwork.update.mockResolvedValue({});
-      mockPrisma.$transaction.mockResolvedValueOnce([{}, {}]);
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        id: 'artwork-1', status: 'COMPLETED', isPublic: true,
+        likes: [],
+      });
+      mockPrisma.$transaction.mockResolvedValueOnce([{}, { likeCount: 6 }]);
 
       const result = await toggleLike({
         artworkId: 'artwork-1',
@@ -203,13 +201,11 @@ describe('Gallery Service', () => {
     });
 
     it('좋아요를 취소한다', async () => {
-      mockPrisma.artwork.findUnique
-        .mockResolvedValueOnce({ id: 'artwork-1', status: 'COMPLETED', isPublic: true })
-        .mockResolvedValueOnce({ likeCount: 4 });
-      mockPrisma.galleryLike.findUnique.mockResolvedValue({ id: 'like-1' });
-      mockPrisma.galleryLike.delete.mockResolvedValue({});
-      mockPrisma.artwork.update.mockResolvedValue({});
-      mockPrisma.$transaction.mockResolvedValueOnce([{}, {}]);
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        id: 'artwork-1', status: 'COMPLETED', isPublic: true,
+        likes: [{ id: 'like-1' }],
+      });
+      mockPrisma.$transaction.mockResolvedValueOnce([{}, { likeCount: 4 }]);
 
       const result = await toggleLike({
         artworkId: 'artwork-1',
