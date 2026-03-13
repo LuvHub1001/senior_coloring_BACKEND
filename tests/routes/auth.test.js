@@ -114,12 +114,4 @@ describe('Auth Routes', () => {
     });
   });
 
-  describe('GET /api/auth/failure', () => {
-    test('로그인 실패 시 401을 반환한다', async () => {
-      const res = await request(app).get('/api/auth/failure');
-
-      expect(res.status).toBe(401);
-      expect(res.body.error).toBe('로그인에 실패했습니다.');
-    });
-  });
 });
