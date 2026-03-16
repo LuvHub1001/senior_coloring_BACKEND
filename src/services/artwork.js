@@ -1,8 +1,5 @@
 const prisma = require('../config/prisma');
-const supabase = require('../config/supabase');
-const path = require('path');
-const crypto = require('crypto');
-const logger = require('../config/logger');
+const { uploadFile, removeFile } = require('../utils/storage');
 const BUCKET_NAME = 'artworks';
 
 // 색칠 시작 (항상 새 작품 생성)
@@ -55,36 +52,17 @@ async function saveArtwork({ artworkId, userId, file, progress }) {
   const artwork = await getOwnArtwork(artworkId, userId);
 
   // Supabase Storage에 이미지 업로드
-  const ext = path.extname(file.originalname);
+  const ext = require('path').extname(file.originalname);
   const fileName = `${userId}/${artworkId}_${Date.now()}${ext}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(fileName, file.buffer, {
-      contentType: file.mimetype,
-      upsert: true,
-    });
-
-  if (uploadError) {
-    logger.error('Supabase upload error', { error: uploadError.message });
-    const error = new Error('이미지 업로드에 실패했습니다.');
-    error.status = 500;
-    throw error;
-  }
-
-  const { data: urlData } = supabase.storage
-    .from(BUCKET_NAME)
-    .getPublicUrl(fileName);
+  const publicUrl = await uploadFile(BUCKET_NAME, fileName, file.buffer, file.mimetype, { upsert: true });
 
   // 이전 이미지 삭제 (있으면)
   if (artwork.imageUrl) {
-    const oldPath = extractStoragePath(artwork.imageUrl);
-    if (oldPath) {
-      await supabase.storage.from(BUCKET_NAME).remove([oldPath]);
-    }
+    await removeFile(BUCKET_NAME, artwork.imageUrl);
   }
 
-  const updateData = { imageUrl: urlData.publicUrl };
+  const updateData = { imageUrl: publicUrl };
   if (progress !== undefined) {
     updateData.progress = Math.max(0, Math.min(100, Number(progress)));
   }
@@ -165,10 +143,7 @@ async function completeArtwork({ artworkId, userId }) {
 
     if (rootArtwork && rootArtwork.userId === userId) {
       if (rootArtwork.imageUrl) {
-        const storagePath = extractStoragePath(rootArtwork.imageUrl);
-        if (storagePath) {
-          await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
-        }
+        await removeFile(BUCKET_NAME, rootArtwork.imageUrl);
       }
 
       await prisma.$transaction(async (tx) => {
@@ -193,7 +168,18 @@ async function getMyArtworks({ userId, status }) {
 
   return prisma.artwork.findMany({
     where,
-    include: { design: true },
+    select: {
+      id: true,
+      imageUrl: true,
+      progress: true,
+      status: true,
+      isPublic: true,
+      likeCount: true,
+      rootArtworkId: true,
+      updatedAt: true,
+      createdAt: true,
+      design: { select: { id: true, title: true, imageUrl: true, category: true } },
+    },
     orderBy: { updatedAt: 'desc' },
   });
 }
@@ -209,10 +195,7 @@ async function deleteArtwork({ artworkId, userId }) {
 
   // Storage 이미지 삭제
   if (artwork.imageUrl) {
-    const storagePath = extractStoragePath(artwork.imageUrl);
-    if (storagePath) {
-      await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
-    }
+    await removeFile(BUCKET_NAME, artwork.imageUrl);
   }
 
   // 트랜잭션으로 연관 데이터 정리 후 삭제
@@ -257,14 +240,6 @@ async function getOwnArtwork(artworkId, userId, { includeDesign = true } = {}) {
   }
 
   return artwork;
-}
-
-// Supabase Storage URL에서 경로 추출
-function extractStoragePath(publicUrl) {
-  const marker = `/storage/v1/object/public/${BUCKET_NAME}/`;
-  const idx = publicUrl.indexOf(marker);
-  if (idx === -1) return null;
-  return publicUrl.slice(idx + marker.length);
 }
 
 // 대표 작품 선택

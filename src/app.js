@@ -15,7 +15,9 @@ const artworkRouter = require('./routes/artwork');
 const themeRouter = require('./routes/theme');
 const imageRouter = require('./routes/image');
 const galleryRouter = require('./routes/gallery');
+const homeRouter = require('./routes/home');
 const prisma = require('./config/prisma');
+const { allowedOrigins } = require('./config/cors');
 
 const app = express();
 
@@ -30,11 +32,6 @@ app.use(helmet());
 app.use(
   cors({
     origin: function (origin, callback) {
-      // 허용할 origin 목록 (CLIENT_URL 쉼표 구분 지원)
-      const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
-        .split(',')
-        .map((o) => o.trim());
-
       // 서버 간 요청(origin 없음) 또는 허용된 origin
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -43,6 +40,9 @@ app.use(
       }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Authorization', 'Content-Type'],
+    maxAge: 86400,
   }),
 );
 
@@ -102,6 +102,7 @@ app.use('/api/artworks', artworkRouter);
 app.use('/api/themes', themeRouter);
 app.use('/api/images', imageRouter);
 app.use('/api/gallery', galleryRouter);
+app.use('/api/home', homeRouter);
 
 // 에러 핸들링
 app.use(errorHandler);

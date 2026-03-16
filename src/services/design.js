@@ -1,33 +1,11 @@
 const prisma = require('../config/prisma');
-const supabase = require('../config/supabase');
-const path = require('path');
-const crypto = require('crypto');
-const logger = require('../config/logger');
+const { uploadFile, generateFileName } = require('../utils/storage');
 const BUCKET_NAME = 'designs';
 
 // Supabase Storage에 파일 업로드 후 공개 URL 반환
 async function uploadToStorage(file) {
-  const ext = path.extname(file.originalname);
-  const fileName = `${crypto.randomUUID()}${ext}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(fileName, file.buffer, {
-      contentType: file.mimetype,
-    });
-
-  if (uploadError) {
-    logger.error('Supabase upload error', { error: uploadError.message });
-    const error = new Error('이미지 업로드에 실패했습니다.');
-    error.status = 500;
-    throw error;
-  }
-
-  const { data: urlData } = supabase.storage
-    .from(BUCKET_NAME)
-    .getPublicUrl(fileName);
-
-  return urlData.publicUrl;
+  const fileName = generateFileName(file.originalname);
+  return uploadFile(BUCKET_NAME, fileName, file.buffer, file.mimetype);
 }
 
 // 도안 이미지 업로드 + DB 저장

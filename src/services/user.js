@@ -9,8 +9,9 @@ async function getUserProfile(userId) {
       avatarUrl: true,
       email: true,
       selectedThemeId: true,
-      selectedTheme: true,
+      selectedTheme: { select: { id: true, name: true, toggleType: true } },
       featuredArtworkId: true,
+      featuredArtwork: { select: { id: true, imageUrl: true } },
       createdAt: true,
     },
   });
@@ -26,24 +27,20 @@ async function getUserProfile(userId) {
 
 // 닉네임 변경
 async function updateNickname(userId, nickname) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true },
-  });
-
-  if (!user) {
-    const error = new Error('사용자를 찾을 수 없습니다.');
-    error.status = 404;
-    throw error;
+  try {
+    return await prisma.user.update({
+      where: { id: userId },
+      data: { nickname },
+      select: { id: true, nickname: true },
+    });
+  } catch (err) {
+    if (err.code === 'P2025') {
+      const error = new Error('사용자를 찾을 수 없습니다.');
+      error.status = 404;
+      throw error;
+    }
+    throw err;
   }
-
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: { nickname },
-    select: { id: true, nickname: true },
-  });
-
-  return updated;
 }
 
 module.exports = { getUserProfile, updateNickname };

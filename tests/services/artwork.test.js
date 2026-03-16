@@ -316,7 +316,18 @@ describe('Artwork Service', () => {
 
       expect(mockPrisma.artwork.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
-        include: { design: true },
+        select: {
+          id: true,
+          imageUrl: true,
+          progress: true,
+          status: true,
+          isPublic: true,
+          likeCount: true,
+          rootArtworkId: true,
+          updatedAt: true,
+          createdAt: true,
+          design: { select: { id: true, title: true, imageUrl: true, category: true } },
+        },
         orderBy: { updatedAt: 'desc' },
       });
       expect(result).toHaveLength(1);
@@ -329,7 +340,18 @@ describe('Artwork Service', () => {
 
       expect(mockPrisma.artwork.findMany).toHaveBeenCalledWith({
         where: { userId: 'user-1', status: 'COMPLETED' },
-        include: { design: true },
+        select: {
+          id: true,
+          imageUrl: true,
+          progress: true,
+          status: true,
+          isPublic: true,
+          likeCount: true,
+          rootArtworkId: true,
+          updatedAt: true,
+          createdAt: true,
+          design: { select: { id: true, title: true, imageUrl: true, category: true } },
+        },
         orderBy: { updatedAt: 'desc' },
       });
     });

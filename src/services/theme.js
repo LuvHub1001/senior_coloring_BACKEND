@@ -1,19 +1,23 @@
 const prisma = require('../config/prisma');
-const supabase = require('../config/supabase');
-const path = require('path');
-const crypto = require('crypto');
-const logger = require('../config/logger');
+const { uploadFile, generateFileName, removeFile } = require('../utils/storage');
+const { MemoryCache } = require('../utils/cache');
 const BUCKET_NAME = 'themes';
+
+// 테마 데이터 캐시 (TTL 5분)
+const themeCache = new MemoryCache(5 * 60 * 1000);
 
 // 테마 목록 조회 (유저별 해금 여부 포함)
 async function getThemes(userId) {
-  const [themes, user] = await Promise.all([
-    prisma.theme.findMany({ orderBy: { sortOrder: 'asc' } }),
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { selectedThemeId: true, totalCompletedCount: true },
-    }),
-  ]);
+  let themes = themeCache.get('all');
+  if (!themes) {
+    themes = await prisma.theme.findMany({ orderBy: { sortOrder: 'asc' } });
+    themeCache.set('all', themes);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { selectedThemeId: true, totalCompletedCount: true },
+  });
 
   const completedCount = user.totalCompletedCount;
 
@@ -74,30 +78,11 @@ async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColo
   let imageUrl = null;
 
   if (file) {
-    const ext = path.extname(file.originalname);
-    const fileName = `${crypto.randomUUID()}${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(fileName, file.buffer, {
-        contentType: file.mimetype,
-      });
-
-    if (uploadError) {
-      logger.error('Supabase upload error', { error: uploadError.message });
-      const error = new Error('테마 이미지 업로드에 실패했습니다.');
-      error.status = 500;
-      throw error;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(fileName);
-
-    imageUrl = urlData.publicUrl;
+    const fileName = generateFileName(file.originalname);
+    imageUrl = await uploadFile(BUCKET_NAME, fileName, file.buffer, file.mimetype);
   }
 
-  return prisma.theme.create({
+  const created = await prisma.theme.create({
     data: {
       name,
       requiredArtworks: requiredArtworks || 0,
@@ -109,6 +94,9 @@ async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColo
       imageUrl,
     },
   });
+
+  themeCache.invalidate('all');
+  return created;
 }
 
 // 테마 이미지 업로드 (관리용)
@@ -120,41 +108,21 @@ async function uploadThemeImage(themeId, file) {
     throw error;
   }
 
-  const ext = path.extname(file.originalname);
-  const fileName = `${themeId}_${crypto.randomUUID()}${ext}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(fileName, file.buffer, {
-      contentType: file.mimetype,
-      upsert: true,
-    });
-
-  if (uploadError) {
-    logger.error('Supabase upload error', { error: uploadError.message });
-    const error = new Error('테마 이미지 업로드에 실패했습니다.');
-    error.status = 500;
-    throw error;
-  }
+  const fileName = generateFileName(file.originalname, String(themeId));
+  const publicUrl = await uploadFile(BUCKET_NAME, fileName, file.buffer, file.mimetype, { upsert: true });
 
   // 이전 이미지 삭제
   if (theme.imageUrl) {
-    const marker = `/storage/v1/object/public/${BUCKET_NAME}/`;
-    const idx = theme.imageUrl.indexOf(marker);
-    if (idx !== -1) {
-      const oldPath = theme.imageUrl.slice(idx + marker.length);
-      await supabase.storage.from(BUCKET_NAME).remove([oldPath]);
-    }
+    await removeFile(BUCKET_NAME, theme.imageUrl);
   }
 
-  const { data: urlData } = supabase.storage
-    .from(BUCKET_NAME)
-    .getPublicUrl(fileName);
-
-  return prisma.theme.update({
+  const updated = await prisma.theme.update({
     where: { id: themeId },
-    data: { imageUrl: urlData.publicUrl },
+    data: { imageUrl: publicUrl },
   });
+
+  themeCache.invalidate('all');
+  return updated;
 }
 
-module.exports = { getThemes, selectTheme, createTheme, uploadThemeImage };
+module.exports = { getThemes, selectTheme, createTheme, uploadThemeImage, themeCache };

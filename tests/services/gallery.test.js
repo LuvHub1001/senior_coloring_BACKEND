@@ -30,6 +30,8 @@ const {
   getPopularArtworks,
   getGalleryArtworkDetail,
   toggleLike,
+  popularCache,
+  countCache,
 } = require('../../src/services/gallery');
 
 const mockArtwork = {
@@ -46,6 +48,8 @@ const mockArtwork = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  popularCache.clear();
+  countCache.clear();
 });
 
 describe('Gallery Service', () => {

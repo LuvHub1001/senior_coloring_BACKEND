@@ -42,8 +42,9 @@ describe('User Service', () => {
           avatarUrl: true,
           email: true,
           selectedThemeId: true,
-          selectedTheme: true,
+          selectedTheme: { select: { id: true, name: true, toggleType: true } },
           featuredArtworkId: true,
+          featuredArtwork: { select: { id: true, imageUrl: true } },
           createdAt: true,
         },
       });

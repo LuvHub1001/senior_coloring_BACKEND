@@ -1,4 +1,10 @@
 const prisma = require('../config/prisma');
+const { MemoryCache } = require('../utils/cache');
+
+// 인기 작품 캐시 (TTL 5분)
+const popularCache = new MemoryCache(5 * 60 * 1000);
+// 갤러리 총 개수 캐시 (TTL 1분)
+const countCache = new MemoryCache(60 * 1000);
 
 // 갤러리 작품 목록 조회 (공개된 완성 작품만)
 async function getGalleryArtworks({ sort, page, size, userId }) {
@@ -12,7 +18,8 @@ async function getGalleryArtworks({ sort, page, size, userId }) {
       ? [{ likeCount: 'desc' }, { createdAt: 'desc' }]
       : [{ createdAt: 'desc' }];
 
-  const [artworks, totalCount] = await Promise.all([
+  let totalCount = countCache.get('gallery');
+  const [artworks, freshCount] = await Promise.all([
     prisma.artwork.findMany({
       where,
       select: {
@@ -33,8 +40,12 @@ async function getGalleryArtworks({ sort, page, size, userId }) {
       skip,
       take: size,
     }),
-    prisma.artwork.count({ where }),
+    totalCount != null ? Promise.resolve(totalCount) : prisma.artwork.count({ where }),
   ]);
+  if (totalCount == null) {
+    totalCount = freshCount;
+    countCache.set('gallery', totalCount);
+  }
 
   const totalPages = Math.ceil(totalCount / size);
 
@@ -65,14 +76,19 @@ async function getPopularArtworks({ size, userId }) {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  // 오늘 좋아요를 많이 받은 작품 조회
-  const popularArtworkIds = await prisma.galleryLike.groupBy({
-    by: ['artworkId'],
-    where: { createdAt: { gte: todayStart } },
-    _count: { artworkId: true },
-    orderBy: { _count: { artworkId: 'desc' } },
-    take: size,
-  });
+  // 오늘 좋아요를 많이 받은 작품 조회 (캐시)
+  const cacheKey = `popular_${size}`;
+  let popularArtworkIds = popularCache.get(cacheKey);
+  if (!popularArtworkIds) {
+    popularArtworkIds = await prisma.galleryLike.groupBy({
+      by: ['artworkId'],
+      where: { createdAt: { gte: todayStart } },
+      _count: { artworkId: true },
+      orderBy: { _count: { artworkId: 'desc' } },
+      take: size,
+    });
+    popularCache.set(cacheKey, popularArtworkIds);
+  }
 
   if (popularArtworkIds.length === 0) {
     // 오늘 좋아요가 없으면 전체 인기순 fallback
@@ -200,6 +216,7 @@ async function toggleLike({ artworkId, userId }) {
       }),
     ]);
 
+    popularCache.clear();
     return { isLiked: false, likeCount: updated.likeCount };
   }
 
@@ -215,6 +232,7 @@ async function toggleLike({ artworkId, userId }) {
     }),
   ]);
 
+  popularCache.clear();
   return { isLiked: true, likeCount: updated.likeCount };
 }
 
@@ -223,4 +241,6 @@ module.exports = {
   getPopularArtworks,
   getGalleryArtworkDetail,
   toggleLike,
+  popularCache,
+  countCache,
 };

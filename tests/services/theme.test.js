@@ -31,7 +31,7 @@ jest.mock('../../src/config/supabase', () => ({
   storage: { from: mockFrom },
 }));
 
-const { getThemes, selectTheme, uploadThemeImage } = require('../../src/services/theme');
+const { getThemes, selectTheme, uploadThemeImage, themeCache } = require('../../src/services/theme');
 
 const mockThemes = [
   { id: 1, name: '기본', requiredArtworks: 0, imageUrl: null, buttonColor: '#000', buttonTextColor: '#fff', textColor: '#333', sortOrder: 0 },
@@ -40,6 +40,7 @@ const mockThemes = [
 
 beforeEach(() => {
   jest.clearAllMocks();
+  themeCache.clear();
 });
 
 describe('Theme Service', () => {
@@ -68,14 +69,17 @@ describe('Theme Service', () => {
       expect(result.every((t) => t.unlocked)).toBe(true);
     });
 
-    test('병렬로 데이터를 조회한다 (2개 쿼리)', async () => {
+    test('테마 캐시 미스 시 DB 조회, 캐시 히트 시 DB 조회 스킵', async () => {
       mockPrisma.theme.findMany.mockResolvedValue([]);
       mockPrisma.user.findUnique.mockResolvedValue({ selectedThemeId: null, totalCompletedCount: 0 });
 
       await getThemes('user-1');
-
       expect(mockPrisma.theme.findMany).toHaveBeenCalledTimes(1);
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledTimes(1);
+
+      // 두 번째 호출 시 캐시 히트 → findMany 호출 안 함
+      await getThemes('user-1');
+      expect(mockPrisma.theme.findMany).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledTimes(2);
     });
   });
 

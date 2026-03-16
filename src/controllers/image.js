@@ -1,5 +1,6 @@
 const sharp = require('sharp');
 const logger = require('../config/logger');
+const { allowedOrigins } = require('../config/cors');
 
 const ALLOWED_CONTENT_TYPES = [
   'image/png',
@@ -120,9 +121,6 @@ async function proxy(req, res, next) {
       cacheMaxAge = RESIZE_CACHE_MAX_AGE;
     }
 
-    const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
-      .split(',')
-      .map((o) => o.trim());
     const requestOrigin = req.headers.origin;
     const corsOrigin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
 
