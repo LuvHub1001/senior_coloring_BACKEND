@@ -133,6 +133,7 @@ async function proxy(req, res, next) {
       'Access-Control-Allow-Origin': corsOrigin,
       'Access-Control-Allow-Methods': 'GET',
       'X-Content-Type-Options': 'nosniff',
+      'Cross-Origin-Resource-Policy': 'cross-origin',
       'Vary': 'Accept',
     };
 
