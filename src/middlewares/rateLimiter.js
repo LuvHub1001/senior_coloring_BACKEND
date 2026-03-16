@@ -29,10 +29,11 @@ const uploadLimiter = rateLimit({
   message: { success: false, error: '업로드 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
 });
 
-// 이미지 프록시: 프로덕션 15분당 60회, 개발 15분당 200회
+// 이미지 프록시: 프로덕션 15분당 200회, 개발 15분당 500회
+// (갤러리 무한스크롤 20개/페이지 + 리사이즈 요청 대응)
 const proxyLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isDev ? 200 : 60,
+  max: isDev ? 500 : 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: '이미지 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },

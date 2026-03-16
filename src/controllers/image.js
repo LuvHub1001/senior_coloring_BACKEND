@@ -1,18 +1,63 @@
+const sharp = require('sharp');
 const logger = require('../config/logger');
 
 const ALLOWED_CONTENT_TYPES = [
   'image/png',
   'image/jpeg',
   'image/webp',
+  'image/svg+xml',
 ];
+
+const FORMAT_CONTENT_TYPE = {
+  webp: 'image/webp',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+};
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 const FETCH_TIMEOUT = 10000; // 10초
+const MAX_INPUT_PIXELS = 100 * 1024 * 1024; // 1억 픽셀 (10000x10000) - 이미지 폭탄 방지
 
-// 이미지 프록시 (Supabase Storage CORS 우회)
+// 리사이즈된 이미지는 장시간 캐싱 (7일), 원본 프록시는 1시간
+const RESIZE_CACHE_MAX_AGE = 7 * 24 * 3600;
+const PROXY_CACHE_MAX_AGE = 3600;
+
+/**
+ * 이미지 리사이즈 처리
+ * @param {Buffer} buffer - 원본 이미지 버퍼
+ * @param {Object} options - { w, q, f }
+ * @returns {Promise<{ data: Buffer, contentType: string }>}
+ */
+async function resizeImage(buffer, { w, q, f }) {
+  let pipeline = sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS });
+
+  if (w) {
+    pipeline = pipeline.resize(w, null, { withoutEnlargement: true });
+  }
+
+  if (f) {
+    pipeline = pipeline.toFormat(f, { quality: q });
+  } else if (q !== undefined) {
+    // 포맷 변환 없이 품질만 조정 시, 원본 포맷 유지
+    const metadata = await sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();
+    const format = metadata.format;
+    if (['jpeg', 'webp', 'png'].includes(format)) {
+      pipeline = pipeline.toFormat(format, { quality: q });
+    }
+  }
+
+  const data = await pipeline.toBuffer();
+  const contentType = f ? FORMAT_CONTENT_TYPE[f] : null;
+  return { data, contentType };
+}
+
+// 이미지 프록시 (Supabase Storage CORS 우회 + 리사이징)
 async function proxy(req, res, next) {
   try {
-    const { url } = req.query;
+    const { url, f } = req.query;
+    const w = req.query.w != null ? Number(req.query.w) : undefined;
+    const q = req.query.q != null ? Number(req.query.q) : 80;
+    const needsResize = w || f || q !== 80;
 
     const response = await fetch(url, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT),
@@ -60,7 +105,20 @@ async function proxy(req, res, next) {
       chunks.push(chunk);
     }
 
-    const buffer = Buffer.concat(chunks);
+    let buffer = Buffer.concat(chunks);
+    let outputContentType = contentType;
+    let cacheMaxAge = PROXY_CACHE_MAX_AGE;
+
+    // 리사이즈 처리 (SVG는 벡터 포맷이므로 리사이징 불필요, 그대로 프록시)
+    const isSvg = contentType.startsWith('image/svg+xml');
+    if (needsResize && !isSvg) {
+      const result = await resizeImage(buffer, { w, q, f });
+      buffer = result.data;
+      if (result.contentType) {
+        outputContentType = result.contentType;
+      }
+      cacheMaxAge = RESIZE_CACHE_MAX_AGE;
+    }
 
     const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
       .split(',')
@@ -68,14 +126,22 @@ async function proxy(req, res, next) {
     const requestOrigin = req.headers.origin;
     const corsOrigin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
 
-    res.set({
-      'Content-Type': contentType,
+    const headers = {
+      'Content-Type': outputContentType,
       'Content-Length': buffer.length,
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': `public, max-age=${cacheMaxAge}`,
       'Access-Control-Allow-Origin': corsOrigin,
       'Access-Control-Allow-Methods': 'GET',
       'X-Content-Type-Options': 'nosniff',
-    });
+      'Vary': 'Accept',
+    };
+
+    // SVG XSS 방지: 스크립트 실행 차단 CSP 헤더 추가
+    if (isSvg) {
+      headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:";
+    }
+
+    res.set(headers);
 
     res.send(buffer);
   } catch (err) {
@@ -89,4 +155,4 @@ async function proxy(req, res, next) {
   }
 }
 
-module.exports = { proxy };
+module.exports = { proxy, resizeImage };
