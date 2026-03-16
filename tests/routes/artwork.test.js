@@ -1,7 +1,6 @@
 require('../setup');
 
 const mockPrisma = require('../helpers/prisma-mock');
-
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => require('../helpers/prisma-mock')),
 }));
@@ -50,8 +49,7 @@ beforeEach(() => {
 describe('Artwork Routes', () => {
   describe('POST /api/artworks', () => {
     test('인증 없이 요청하면 401을 반환한다', async () => {
-      const res = await request(app)
-        .post('/api/artworks')
+      const res = await request(app).post('/api/artworks')
         .send({ designId: 1 });
 
       expect(res.status).toBe(401);
@@ -62,8 +60,7 @@ describe('Artwork Routes', () => {
       mockPrisma.artwork.findFirst.mockResolvedValue(null);
       mockPrisma.artwork.create.mockResolvedValue(mockArtwork);
 
-      const res = await request(app)
-        .post('/api/artworks')
+      const res = await request(app).post('/api/artworks')
         .set('Authorization', `Bearer ${token}`)
         .send({ designId: 1 });
 
@@ -73,8 +70,7 @@ describe('Artwork Routes', () => {
     });
 
     test('designId 없이 요청하면 400을 반환한다', async () => {
-      const res = await request(app)
-        .post('/api/artworks')
+      const res = await request(app).post('/api/artworks')
         .set('Authorization', `Bearer ${token}`)
         .send({});
 
@@ -83,8 +79,7 @@ describe('Artwork Routes', () => {
     });
 
     test('designId가 음수이면 400을 반환한다', async () => {
-      const res = await request(app)
-        .post('/api/artworks')
+      const res = await request(app).post('/api/artworks')
         .set('Authorization', `Bearer ${token}`)
         .send({ designId: -1 });
 
@@ -92,8 +87,7 @@ describe('Artwork Routes', () => {
     });
 
     test('designId가 문자열이면 400을 반환한다', async () => {
-      const res = await request(app)
-        .post('/api/artworks')
+      const res = await request(app).post('/api/artworks')
         .set('Authorization', `Bearer ${token}`)
         .send({ designId: 'abc' });
 

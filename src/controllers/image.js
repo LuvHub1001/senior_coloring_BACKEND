@@ -1,6 +1,34 @@
 const sharp = require('sharp');
+const dns = require('dns').promises;
 const logger = require('../config/logger');
 const { allowedOrigins } = require('../config/cors');
+
+// SSRF 방어: 내부 네트워크 IP 대역 차단
+const INTERNAL_IP_PATTERNS = [
+  /^127\./,                          // loopback
+  /^10\./,                           // Class A private
+  /^172\.(1[6-9]|2[0-9]|3[01])\./,  // Class B private
+  /^192\.168\./,                     // Class C private
+  /^169\.254\./,                     // link-local
+  /^0\./,                            // current network
+  /^::1$/,                           // IPv6 loopback
+  /^f[cd][0-9a-f]{2}:/i,            // IPv6 unique local (fc00::/7)
+  /^fe80:/i,                         // IPv6 link-local
+];
+
+function isInternalIp(ip) {
+  return INTERNAL_IP_PATTERNS.some((pattern) => pattern.test(ip));
+}
+
+async function validateNotInternalIp(urlString) {
+  const { hostname } = new URL(urlString);
+  const { address } = await dns.lookup(hostname);
+  if (isInternalIp(address)) {
+    const error = new Error('내부 네트워크 접근이 차단되었습니다.');
+    error.status = 403;
+    throw error;
+  }
+}
 
 const ALLOWED_CONTENT_TYPES = [
   'image/png',
@@ -59,6 +87,9 @@ async function proxy(req, res, next) {
     const w = req.query.w != null ? Number(req.query.w) : undefined;
     const q = req.query.q != null ? Number(req.query.q) : 80;
     const needsResize = w || f || q !== 80;
+
+    // SSRF 방어: DNS 해석 후 내부 IP 여부 확인
+    await validateNotInternalIp(url);
 
     const response = await fetch(url, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT),

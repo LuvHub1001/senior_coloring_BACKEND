@@ -1,7 +1,6 @@
 require('../setup');
 
 const mockPrisma = require('../helpers/prisma-mock');
-
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => require('../helpers/prisma-mock')),
 }));

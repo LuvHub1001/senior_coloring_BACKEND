@@ -1,7 +1,6 @@
 require('../setup');
 
 const mockPrisma = require('../helpers/prisma-mock');
-
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => require('../helpers/prisma-mock')),
 }));
@@ -70,8 +69,7 @@ describe('Theme Routes', () => {
       mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 5 });
       mockPrisma.user.update.mockResolvedValue({ id: 'user-1', selectedThemeId: 1 });
 
-      const res = await request(app)
-        .patch('/api/themes/select')
+      const res = await request(app).patch('/api/themes/select')
         .set('Authorization', `Bearer ${token}`)
         .send({ themeId: 1 });
 
@@ -80,8 +78,7 @@ describe('Theme Routes', () => {
     });
 
     test('themeId 없이 요청하면 400을 반환한다', async () => {
-      const res = await request(app)
-        .patch('/api/themes/select')
+      const res = await request(app).patch('/api/themes/select')
         .set('Authorization', `Bearer ${token}`)
         .send({});
 
@@ -92,8 +89,7 @@ describe('Theme Routes', () => {
       mockPrisma.theme.findUnique.mockResolvedValue(mockThemes[1]);
       mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 1 });
 
-      const res = await request(app)
-        .patch('/api/themes/select')
+      const res = await request(app).patch('/api/themes/select')
         .set('Authorization', `Bearer ${token}`)
         .send({ themeId: 2 });
 
@@ -103,8 +99,7 @@ describe('Theme Routes', () => {
     test('존재하지 않는 테마 선택 시 404를 반환한다', async () => {
       mockPrisma.theme.findUnique.mockResolvedValue(null);
 
-      const res = await request(app)
-        .patch('/api/themes/select')
+      const res = await request(app).patch('/api/themes/select')
         .set('Authorization', `Bearer ${token}`)
         .send({ themeId: 999 });
 

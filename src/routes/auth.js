@@ -1,22 +1,15 @@
 const express = require('express');
 const passport = require('passport');
 const { generateToken, generateRefreshToken, rotateTokens, revokeAllTokens } = require('../utils/jwt');
+const { setTokenCookies, clearTokenCookies } = require('../utils/cookie');
 const { authenticate } = require('../middlewares/auth');
 const { authLimiter } = require('../middlewares/rateLimiter');
-const { validate } = require('../middlewares/validate');
-const { z } = require('zod');
 const logger = require('../config/logger');
 
 const router = express.Router();
 
 // 인증 라우트에 rate limiting 적용
 router.use(authLimiter);
-
-const refreshSchema = z.object({
-  body: z.object({
-    refreshToken: z.string().min(1, 'refreshToken은 필수입니다.'),
-  }),
-});
 
 // 프론트엔드 콜백 URL 생성 헬퍼
 function getClientCallbackUrl() {
@@ -27,30 +20,26 @@ function getClientCallbackUrl() {
 function redirectWithError(res, errorCode, errorMessage) {
   const callbackUrl = getClientCallbackUrl();
   const encodedMessage = encodeURIComponent(errorMessage);
-  res.redirect(`${callbackUrl}#error=${errorCode}&error_message=${encodedMessage}`);
+  res.redirect(`${callbackUrl}?error=${errorCode}&error_message=${encodedMessage}`);
 }
 
 // OAuth 에러 분류
 function classifyOAuthError(err, info) {
-  // 사용자가 동의 화면에서 취소한 경우
   if (info?.message?.includes('cancel') || info?.message?.includes('denied') ||
       err?.message?.includes('cancel') || err?.message?.includes('denied') ||
       info?.message?.includes('access_denied') || err?.code === 'access_denied') {
     return { code: 'user_cancelled', message: '' };
   }
 
-  // provider 측 장애 (네트워크/타임아웃/5xx)
   if (err?.code === 'ECONNREFUSED' || err?.code === 'ETIMEDOUT' || err?.code === 'ENOTFOUND' ||
       err?.statusCode >= 500) {
     return { code: 'provider_unavailable', message: '로그인 서비스에 일시적인 문제가 발생했습니다' };
   }
 
-  // 인증 실패 (토큰 교환 실패, 잘못된 코드 등)
   if (info || err?.statusCode === 401 || err?.statusCode === 403) {
     return { code: 'auth_failed', message: '로그인 인증에 실패했습니다' };
   }
 
-  // 그 외 서버 에러
   return { code: 'server_error', message: '서버에 문제가 발생했습니다' };
 }
 
@@ -58,7 +47,6 @@ function classifyOAuthError(err, info) {
 function createOAuthCallbackHandler(provider) {
   return (req, res, next) => {
     passport.authenticate(provider, { session: false }, async (err, user, info) => {
-      // 에러 또는 인증 실패
       if (err || !user) {
         const classified = classifyOAuthError(err, info);
         logger.warn('OAuth 인증 실패', {
@@ -69,21 +57,21 @@ function createOAuthCallbackHandler(provider) {
         });
 
         if (classified.code === 'user_cancelled') {
-          return res.redirect(`${getClientCallbackUrl()}#error=user_cancelled`);
+          return res.redirect(`${getClientCallbackUrl()}?error=user_cancelled`);
         }
         return redirectWithError(res, classified.code, classified.message);
       }
 
-      // 인증 성공 → 토큰 발급
+      // 인증 성공 → 토큰을 httpOnly 쿠키로 설정 후 프론트로 리다이렉트
       try {
         const { isNew, ...userData } = user;
         const accessToken = generateToken(userData);
         const refresh = await generateRefreshToken(userData.id);
 
+        setTokenCookies(res, accessToken, refresh.token);
+
         const callbackUrl = getClientCallbackUrl();
-        res.redirect(
-          `${callbackUrl}#token=${accessToken}&refreshToken=${refresh.token}&isNew=${isNew}`,
-        );
+        res.redirect(`${callbackUrl}?isNew=${isNew}`);
       } catch (tokenErr) {
         logger.error('OAuth 토큰 발급 실패', {
           provider,
@@ -104,28 +92,38 @@ router.get('/kakao/callback', createOAuthCallbackHandler('kakao'));
 router.get('/naver', passport.authenticate('naver'));
 router.get('/naver/callback', createOAuthCallbackHandler('naver'));
 
-// 토큰 갱신
-router.post('/refresh', validate(refreshSchema), async (req, res, next) => {
+// 토큰 갱신 (쿠키 기반 — refreshToken 쿠키에서 읽고, 새 토큰을 쿠키로 설정)
+router.post('/refresh', async (req, res, next) => {
   try {
-    const { refreshToken } = req.body;
+    // 쿠키 우선, body fallback (전환 기간 호환)
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(400).json({ success: false, error: 'refreshToken은 필수입니다.' });
+    }
+
     const tokens = await rotateTokens(refreshToken);
+
+    setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
 
     res.json({
       success: true,
-      data: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      },
+      data: { message: '토큰이 갱신되었습니다.' },
     });
   } catch (err) {
+    // 토큰 재사용 감지 시 쿠키도 제거
+    if (err.statusCode === 401) {
+      clearTokenCookies(res);
+    }
     next(err);
   }
 });
 
-// 로그아웃 (모든 refresh token 무효화)
+// 로그아웃 (모든 refresh token 무효화 + 쿠키 제거)
 router.post('/logout', authenticate, async (req, res, next) => {
   try {
     await revokeAllTokens(req.user.id);
+    clearTokenCookies(res);
     res.json({ success: true, data: null });
   } catch (err) {
     next(err);

@@ -130,16 +130,19 @@ model Exhibition {
 
 // Refresh Token
 model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  userId    String   @map("user_id")
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  id        String    @id @default(uuid())
+  token     String    @unique
+  family    String    @default(uuid()) @map("family") // 토큰 패밀리 (재사용 감지)
+  userId    String    @map("user_id")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at") // null=활성, 값=사용됨(rotation 완료)
+  createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([family])
   @@map("refresh_tokens")
 }
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
 const isProduction = process.env.NODE_ENV === 'production';
 const passport = require('./config/passport');
@@ -45,6 +46,9 @@ app.use(
     maxAge: 86400,
   }),
 );
+
+// 쿠키 파서
+app.use(cookieParser());
 
 // 요청 파싱 (body 크기 제한)
 app.use(express.json({ limit: '1mb' }));

@@ -1,7 +1,6 @@
 require('../setup');
 
 const mockPrisma = require('../helpers/prisma-mock');
-
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => require('../helpers/prisma-mock')),
 }));
@@ -62,8 +61,7 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
     mockPrisma.artwork.findFirst.mockResolvedValue(null);
     mockPrisma.artwork.create.mockResolvedValue(newArtwork);
 
-    const createRes = await request(app)
-      .post('/api/artworks')
+    const createRes = await request(app).post('/api/artworks')
       .set('Authorization', `Bearer ${token}`)
       .send({ designId })
       .expect(201);
@@ -75,11 +73,11 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
     const unlockedTheme = { id: 2, name: '바다', imageUrl: null };
 
     mockPrisma.artwork.findUnique.mockResolvedValue(newArtwork);
-    mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 0 }); // 첫 작품
+    mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 0 });
     mockPrisma.artwork.update.mockResolvedValue(completedArtwork);
     mockPrisma.user.update
-      .mockResolvedValueOnce({ totalCompletedCount: 1 }) // increment
-      .mockResolvedValueOnce({}); // 대표 작품 설정
+      .mockResolvedValueOnce({ totalCompletedCount: 1 })
+      .mockResolvedValueOnce({});
     mockPrisma.theme.findFirst.mockResolvedValue(unlockedTheme);
 
     const completeRes = await request(app)
@@ -90,7 +88,7 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
     expect(completeRes.body.data.status).toBe('COMPLETED');
     expect(completeRes.body.data.unlockedTheme).toEqual(unlockedTheme);
 
-    // 4. 대표 작품 설정 (완성 후)
+    // 4. 대표 작품 설정
     mockPrisma.artwork.findUnique.mockResolvedValue(completedArtwork);
     mockPrisma.user.update.mockResolvedValue({});
 
@@ -107,11 +105,10 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
       { id: 2, name: '바다', requiredArtworks: 1, sortOrder: 1, imageUrl: null, buttonColor: '#00f', buttonTextColor: '#fff', textColor: '#006' },
     ];
     mockPrisma.theme.findUnique.mockResolvedValue(themes[1]);
-    mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 1 }); // 누적 1개 완성
+    mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 1 });
     mockPrisma.user.update.mockResolvedValue({ id: 'user-1', selectedThemeId: 2 });
 
-    const themeRes = await request(app)
-      .patch('/api/themes/select')
+    const themeRes = await request(app).patch('/api/themes/select')
       .set('Authorization', `Bearer ${token}`)
       .send({ themeId: 2 })
       .expect(200);
@@ -124,35 +121,38 @@ describe('통합 워크플로우: 인증 흐름', () => {
   test('토큰 갱신 → 로그아웃 플로우', async () => {
     // 1. Refresh Token으로 새 토큰 발급
     const storedToken = {
-      id: 'rt-1', token: 'valid-refresh',
+      id: 'rt-1', token: 'valid-refresh', family: 'fam-1',
       userId: 'user-1', expiresAt: new Date(Date.now() + 86400000),
-      user: testUser,
+      usedAt: null, user: testUser,
     };
 
     mockPrisma.refreshToken.findUnique.mockResolvedValue(storedToken);
-    mockPrisma.refreshToken.delete.mockResolvedValue({});
+    mockPrisma.refreshToken.update.mockResolvedValue({});
     mockPrisma.refreshToken.create.mockResolvedValue({
       token: 'new-refresh', expiresAt: new Date(Date.now() + 86400000 * 30),
     });
 
-    const refreshRes = await request(app)
-      .post('/api/auth/refresh')
+    const refreshRes = await request(app).post('/api/auth/refresh')
       .send({ refreshToken: 'valid-refresh' })
       .expect(200);
 
-    const newAccessToken = refreshRes.body.data.accessToken;
-    expect(newAccessToken).toBeDefined();
+    // 쿠키에 토큰이 설정됨
+    const cookies = refreshRes.headers['set-cookie'];
+    expect(cookies).toBeDefined();
 
-    // 2. 새 Access Token으로 API 호출
+    // 2. 새 Access Token으로 API 호출 (쿠키에서 추출)
+    const accessTokenCookie = cookies.find(c => c.startsWith('token='));
+    const accessTokenValue = accessTokenCookie.split(';')[0].split('=')[1];
+
     mockPrisma.user.findUnique.mockResolvedValue({
       id: 'user-1', nickname: '테스터', email: 'test@example.com',
       avatarUrl: null, selectedThemeId: null, selectedTheme: null,
-      featuredArtworkId: null, createdAt: new Date().toISOString(),
+      featuredArtworkId: null, featuredArtwork: null, createdAt: new Date().toISOString(),
     });
 
     await request(app)
       .get('/api/users/me')
-      .set('Authorization', `Bearer ${newAccessToken}`)
+      .set('Cookie', [`token=${accessTokenValue}`])
       .expect(200);
 
     // 3. 로그아웃
@@ -160,7 +160,7 @@ describe('통합 워크플로우: 인증 흐름', () => {
 
     await request(app)
       .post('/api/auth/logout')
-      .set('Authorization', `Bearer ${newAccessToken}`)
+      .set('Cookie', [`token=${accessTokenValue}`])
       .expect(200);
   });
 });

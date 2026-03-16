@@ -13,6 +13,13 @@ jest.mock('../../src/config/supabase', () => ({
   storage: { from: jest.fn() },
 }));
 
+// SSRF 방어 DNS lookup 모킹 (테스트 도메인은 외부 IP로 해석)
+jest.mock('dns', () => ({
+  promises: {
+    lookup: jest.fn().mockResolvedValue({ address: '54.230.1.1', family: 4 }),
+  },
+}));
+
 const request = require('supertest');
 const sharp = require('sharp');
 const app = require('../../src/app');
