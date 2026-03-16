@@ -76,4 +76,60 @@ describe('User Routes', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('PATCH /api/users/me/nickname', () => {
+    test('닉네임을 변경하고 전체 프로필을 반환한다', async () => {
+      mockPrisma.user.update.mockResolvedValue({ id: 'user-1' });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...mockUserProfile,
+        nickname: '새닉네임',
+      });
+
+      const res = await request(app)
+        .patch('/api/users/me/nickname')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ nickname: '새닉네임' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.nickname).toBe('새닉네임');
+      expect(res.body.data.email).toBeDefined();
+      expect(res.body.data.selectedThemeId).toBeDefined();
+    });
+
+    test('인증 없이 요청하면 401을 반환한다', async () => {
+      const res = await request(app)
+        .patch('/api/users/me/nickname')
+        .send({ nickname: '새닉네임' });
+
+      expect(res.status).toBe(401);
+    });
+
+    test('빈 닉네임이면 400을 반환한다', async () => {
+      const res = await request(app)
+        .patch('/api/users/me/nickname')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ nickname: '' });
+
+      expect(res.status).toBe(400);
+    });
+
+    test('16자 초과 닉네임이면 400을 반환한다', async () => {
+      const res = await request(app)
+        .patch('/api/users/me/nickname')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ nickname: '가나다라마바사아자차카타파하히후헤' });
+
+      expect(res.status).toBe(400);
+    });
+
+    test('닉네임 없이 요청하면 400을 반환한다', async () => {
+      const res = await request(app)
+        .patch('/api/users/me/nickname')
+        .set('Authorization', `Bearer ${token}`)
+        .send({});
+
+      expect(res.status).toBe(400);
+    });
+  });
 });
