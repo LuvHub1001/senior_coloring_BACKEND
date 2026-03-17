@@ -41,13 +41,13 @@ beforeEach(() => {
   });
 });
 
-describe('Gallery Routes', () => {
-  describe('GET /api/gallery/artworks', () => {
-    it('비로그인으로 갤러리 목록을 조회한다', async () => {
+describe('Community Routes', () => {
+  describe('GET /api/community/artworks', () => {
+    it('비로그인으로 커뮤니티 목록을 조회한다', async () => {
       mockPrisma.artwork.findMany.mockResolvedValue([mockArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
 
-      const res = await request(app).get('/api/gallery/artworks');
+      const res = await request(app).get('/api/community/artworks');
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -62,7 +62,7 @@ describe('Gallery Routes', () => {
       mockPrisma.artwork.count.mockResolvedValue(1);
 
       const res = await request(app)
-        .get('/api/gallery/artworks')
+        .get('/api/community/artworks')
         .set('Authorization', `Bearer ${testToken}`);
 
       expect(res.status).toBe(200);
@@ -70,31 +70,31 @@ describe('Gallery Routes', () => {
     });
 
     it('잘못된 sort 파라미터를 거부한다', async () => {
-      const res = await request(app).get('/api/gallery/artworks?sort=invalid');
+      const res = await request(app).get('/api/community/artworks?sort=invalid');
 
       expect(res.status).toBe(400);
     });
   });
 
-  describe('GET /api/gallery/artworks/popular', () => {
+  describe('GET /api/community/artworks/popular', () => {
     it('오늘의 인기 작품을 조회한다', async () => {
-      mockPrisma.galleryLike.groupBy.mockResolvedValue([]);
+      mockPrisma.communityLike.groupBy.mockResolvedValue([]);
       mockPrisma.artwork.findMany.mockResolvedValue([mockArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
 
-      const res = await request(app).get('/api/gallery/artworks/popular');
+      const res = await request(app).get('/api/community/artworks/popular');
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
   });
 
-  describe('GET /api/gallery/artworks/:artworkId', () => {
+  describe('GET /api/community/artworks/:artworkId', () => {
     it('작품 상세를 조회한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
 
       const res = await request(app).get(
-        '/api/gallery/artworks/550e8400-e29b-41d4-a716-446655440000',
+        '/api/community/artworks/550e8400-e29b-41d4-a716-446655440000',
       );
 
       expect(res.status).toBe(200);
@@ -104,16 +104,16 @@ describe('Gallery Routes', () => {
     });
 
     it('잘못된 UUID를 거부한다', async () => {
-      const res = await request(app).get('/api/gallery/artworks/not-a-uuid');
+      const res = await request(app).get('/api/community/artworks/not-a-uuid');
 
       expect(res.status).toBe(400);
     });
   });
 
-  describe('POST /api/gallery/artworks/:artworkId/like', () => {
+  describe('POST /api/community/artworks/:artworkId/like', () => {
     it('비로그인 시 401을 반환한다', async () => {
       const res = await request(app).post(
-        '/api/gallery/artworks/550e8400-e29b-41d4-a716-446655440000/like',
+        '/api/community/artworks/550e8400-e29b-41d4-a716-446655440000/like',
       );
 
       expect(res.status).toBe(401);
@@ -127,7 +127,7 @@ describe('Gallery Routes', () => {
       mockPrisma.$transaction.mockResolvedValueOnce([{}, { likeCount: 6 }]);
 
       const res = await request(app)
-        .post('/api/gallery/artworks/550e8400-e29b-41d4-a716-446655440000/like')
+        .post('/api/community/artworks/550e8400-e29b-41d4-a716-446655440000/like')
         .set('Authorization', `Bearer ${testToken}`);
 
       expect(res.status).toBe(200);

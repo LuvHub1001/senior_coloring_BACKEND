@@ -1,11 +1,11 @@
-const galleryService = require('../services/gallery');
+const communityService = require('../services/community');
 
-// 갤러리 작품 목록 조회
+// 커뮤니티 작품 목록 조회
 async function list(req, res, next) {
   try {
     const { sort, page, size } = req.query;
 
-    const result = await galleryService.getGalleryArtworks({
+    const result = await communityService.getCommunityArtworks({
       sort,
       page,
       size,
@@ -23,7 +23,7 @@ async function popular(req, res, next) {
   try {
     const { size } = req.query;
 
-    const artworks = await galleryService.getPopularArtworks({
+    const artworks = await communityService.getPopularArtworks({
       size,
       userId: req.user?.id || null,
     });
@@ -37,7 +37,7 @@ async function popular(req, res, next) {
 // 작품 상세 조회
 async function detail(req, res, next) {
   try {
-    const artwork = await galleryService.getGalleryArtworkDetail({
+    const artwork = await communityService.getCommunityArtworkDetail({
       artworkId: req.params.artworkId,
       userId: req.user?.id || null,
     });
@@ -51,7 +51,7 @@ async function detail(req, res, next) {
 // 좋아요 토글
 async function toggleLike(req, res, next) {
   try {
-    const result = await galleryService.toggleLike({
+    const result = await communityService.toggleLike({
       artworkId: req.params.artworkId,
       userId: req.user.id,
     });

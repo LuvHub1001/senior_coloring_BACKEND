@@ -5,6 +5,8 @@ const { themeCache } = require('./theme');
 const DESIGN_BUCKET = 'designs';
 const THEME_BUCKET = 'themes';
 const ARTWORK_BUCKET = 'artworks';
+const RECOMMENDATION_BUCKET = 'recommendations';
+const MAX_RECOMMENDATIONS = 10;
 
 // ── 대시보드 통계 ──
 
@@ -407,11 +409,91 @@ async function deleteArtwork(artworkId) {
     await tx.exhibition.deleteMany({ where: { artworkId } });
 
     // 갤러리 좋아요 삭제
-    await tx.galleryLike.deleteMany({ where: { artworkId } });
+    await tx.communityLike.deleteMany({ where: { artworkId } });
 
     // 작품 삭제
     await tx.artwork.delete({ where: { id: artworkId } });
   });
+}
+
+// ── 추천 배너 관리 ──
+
+async function getRecommendations() {
+  return prisma.recommendation.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: MAX_RECOMMENDATIONS,
+    select: {
+      id: true,
+      imageUrl: true,
+      designId: true,
+    },
+  });
+}
+
+async function createRecommendation({ designId, file }) {
+  // 최대 개수 + 도안 존재 확인 (병렬)
+  const [count, design] = await Promise.all([
+    prisma.recommendation.count(),
+    prisma.design.findUnique({ where: { id: designId }, select: { id: true } }),
+  ]);
+
+  if (count >= MAX_RECOMMENDATIONS) {
+    const error = new Error(`추천 배너는 최대 ${MAX_RECOMMENDATIONS}개까지 등록할 수 있습니다.`);
+    error.status = 409;
+    throw error;
+  }
+
+  if (!design) {
+    const error = new Error('연결할 도안을 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  const fileName = generateFileName(file.originalname);
+  const imageUrl = await uploadFile(RECOMMENDATION_BUCKET, fileName, file.buffer, file.mimetype);
+
+  return prisma.recommendation.create({
+    data: { designId, imageUrl },
+    select: { id: true, imageUrl: true, designId: true },
+  });
+}
+
+async function deleteRecommendation(id) {
+  const rec = await prisma.recommendation.findUnique({ where: { id } });
+  if (!rec) {
+    const error = new Error('추천 배너를 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  await removeFile(RECOMMENDATION_BUCKET, rec.imageUrl);
+  await prisma.recommendation.delete({ where: { id } });
+}
+
+// ── 공지사항 관리 ──
+
+async function getNotices() {
+  return prisma.notice.findMany({
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, title: true, content: true, createdAt: true },
+  });
+}
+
+async function createNotice({ title, content }) {
+  return prisma.notice.create({
+    data: { title, content },
+    select: { id: true, title: true, content: true, createdAt: true },
+  });
+}
+
+async function deleteNotice(id) {
+  const notice = await prisma.notice.findUnique({ where: { id } });
+  if (!notice) {
+    const error = new Error('공지사항을 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+  await prisma.notice.delete({ where: { id } });
 }
 
 module.exports = {
@@ -427,4 +509,10 @@ module.exports = {
   getUsers,
   getArtworks,
   deleteArtwork,
+  getRecommendations,
+  createRecommendation,
+  deleteRecommendation,
+  getNotices,
+  createNotice,
+  deleteNotice,
 };

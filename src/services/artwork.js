@@ -148,7 +148,7 @@ async function completeArtwork({ artworkId, userId }) {
 
       await prisma.$transaction(async (tx) => {
         await tx.exhibition.deleteMany({ where: { artworkId: rootId } });
-        await tx.galleryLike.deleteMany({ where: { artworkId: rootId } });
+        await tx.communityLike.deleteMany({ where: { artworkId: rootId } });
         await tx.artwork.delete({ where: { id: rootId } });
       });
 
@@ -211,8 +211,8 @@ async function deleteArtwork({ artworkId, userId }) {
       where: { artworkId },
     });
 
-    // 갤러리 좋아요 삭제
-    await tx.galleryLike.deleteMany({
+    // 커뮤니티 좋아요 삭제
+    await tx.communityLike.deleteMany({
       where: { artworkId },
     });
 

@@ -15,7 +15,7 @@ const mockPrisma = {
   user: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
   theme: { findFirst: jest.fn() },
   exhibition: { deleteMany: jest.fn() },
-  galleryLike: { deleteMany: jest.fn() },
+  communityLike: { deleteMany: jest.fn() },
   $transaction: jest.fn((fn) => fn(mockPrisma)),
 };
 

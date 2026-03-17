@@ -15,9 +15,10 @@ const designRouter = require('./routes/design');
 const artworkRouter = require('./routes/artwork');
 const themeRouter = require('./routes/theme');
 const imageRouter = require('./routes/image');
-const galleryRouter = require('./routes/gallery');
+const communityRouter = require('./routes/community');
 const homeRouter = require('./routes/home');
 const adminRouter = require('./routes/admin');
+const noticeRouter = require('./routes/notice');
 const prisma = require('./config/prisma');
 const { allowedOrigins } = require('./config/cors');
 
@@ -106,9 +107,10 @@ app.use('/api/designs', designRouter);
 app.use('/api/artworks', artworkRouter);
 app.use('/api/themes', themeRouter);
 app.use('/api/images', imageRouter);
-app.use('/api/gallery', galleryRouter);
+app.use('/api/community', communityRouter);
 app.use('/api/home', homeRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/notices', noticeRouter);
 
 // 에러 핸들링
 app.use(errorHandler);

@@ -3,11 +3,11 @@ const { MemoryCache } = require('../utils/cache');
 
 // 인기 작품 캐시 (TTL 5분)
 const popularCache = new MemoryCache(5 * 60 * 1000);
-// 갤러리 총 개수 캐시 (TTL 1분)
+// 커뮤니티 총 개수 캐시 (TTL 1분)
 const countCache = new MemoryCache(60 * 1000);
 
-// 갤러리 작품 목록 조회 (공개된 완성 작품만)
-async function getGalleryArtworks({ sort, page, size, userId }) {
+// 커뮤니티 작품 목록 조회 (공개된 완성 작품만)
+async function getCommunityArtworks({ sort, page, size, userId }) {
   page = Number(page);
   size = Number(size);
   const skip = (page - 1) * size;
@@ -18,7 +18,7 @@ async function getGalleryArtworks({ sort, page, size, userId }) {
       ? [{ likeCount: 'desc' }, { createdAt: 'desc' }]
       : [{ createdAt: 'desc' }];
 
-  let totalCount = countCache.get('gallery');
+  let totalCount = countCache.get('community');
   const [artworks, freshCount] = await Promise.all([
     prisma.artwork.findMany({
       where,
@@ -44,7 +44,7 @@ async function getGalleryArtworks({ sort, page, size, userId }) {
   ]);
   if (totalCount == null) {
     totalCount = freshCount;
-    countCache.set('gallery', totalCount);
+    countCache.set('community', totalCount);
   }
 
   const totalPages = Math.ceil(totalCount / size);
@@ -80,7 +80,7 @@ async function getPopularArtworks({ size, userId }) {
   const cacheKey = `popular_${size}`;
   let popularArtworkIds = popularCache.get(cacheKey);
   if (!popularArtworkIds) {
-    popularArtworkIds = await prisma.galleryLike.groupBy({
+    popularArtworkIds = await prisma.communityLike.groupBy({
       by: ['artworkId'],
       where: { createdAt: { gte: todayStart } },
       _count: { artworkId: true },
@@ -92,7 +92,7 @@ async function getPopularArtworks({ size, userId }) {
 
   if (popularArtworkIds.length === 0) {
     // 오늘 좋아요가 없으면 전체 인기순 fallback
-    const result = await getGalleryArtworks({ sort: 'popular', page: 1, size, userId });
+    const result = await getCommunityArtworks({ sort: 'popular', page: 1, size, userId });
     return result.content;
   }
 
@@ -135,7 +135,7 @@ async function getPopularArtworks({ size, userId }) {
 }
 
 // 작품 상세 조회
-async function getGalleryArtworkDetail({ artworkId, userId }) {
+async function getCommunityArtworkDetail({ artworkId, userId }) {
   const artwork = await prisma.artwork.findUnique({
     where: { id: artworkId },
     select: {
@@ -208,7 +208,7 @@ async function toggleLike({ artworkId, userId }) {
   if (existingLike) {
     // 좋아요 취소 — update에서 반환값으로 likeCount 획득
     const [, updated] = await prisma.$transaction([
-      prisma.galleryLike.delete({ where: { id: existingLike.id } }),
+      prisma.communityLike.delete({ where: { id: existingLike.id } }),
       prisma.artwork.update({
         where: { id: artworkId },
         data: { likeCount: { decrement: 1 } },
@@ -222,7 +222,7 @@ async function toggleLike({ artworkId, userId }) {
 
   // 좋아요 추가
   const [, updated] = await prisma.$transaction([
-    prisma.galleryLike.create({
+    prisma.communityLike.create({
       data: { userId, artworkId },
     }),
     prisma.artwork.update({
@@ -237,9 +237,9 @@ async function toggleLike({ artworkId, userId }) {
 }
 
 module.exports = {
-  getGalleryArtworks,
+  getCommunityArtworks,
   getPopularArtworks,
-  getGalleryArtworkDetail,
+  getCommunityArtworkDetail,
   toggleLike,
   popularCache,
   countCache,

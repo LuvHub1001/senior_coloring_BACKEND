@@ -4,7 +4,7 @@ const { authenticate } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
 const { uploadLimiter } = require('../middlewares/rateLimiter');
 const { createDesign, listDesigns, designParams } = require('../validators/design');
-const { create, list, detail, categories } = require('../controllers/design');
+const { create, list, detail, categories, recommendations } = require('../controllers/design');
 
 const router = express.Router();
 
@@ -28,6 +28,9 @@ const uploadFields = upload.fields([
   { name: 'originalImage', maxCount: 1 },
 ]);
 router.post('/', authenticate, uploadLimiter, uploadFields, validate(createDesign), create);
+
+// 추천 배너 목록 조회 (인증 필요, /:id 보다 위에 위치해야 함)
+router.get('/recommendations', authenticate, recommendations);
 
 // 카테고리 목록 조회 (/:id 보다 위에 위치해야 함)
 router.get('/categories', categories);

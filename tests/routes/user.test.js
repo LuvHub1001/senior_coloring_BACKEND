@@ -79,8 +79,7 @@ describe('User Routes', () => {
 
   describe('PATCH /api/users/me/nickname', () => {
     test('닉네임을 변경하고 전체 프로필을 반환한다', async () => {
-      mockPrisma.user.update.mockResolvedValue({ id: 'user-1' });
-      mockPrisma.user.findUnique.mockResolvedValue({
+      mockPrisma.user.update.mockResolvedValue({
         ...mockUserProfile,
         nickname: '새닉네임',
       });

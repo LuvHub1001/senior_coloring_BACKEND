@@ -33,6 +33,7 @@ model User {
   email           String?  @unique
   nickname        String
   avatarUrl       String?  @map("avatar_url")
+  statusMessage   String?  @map("status_message")
   provider        String   // kakao, naver
   providerId      String   @map("provider_id")
   role            Role     @default(USER)
@@ -47,7 +48,7 @@ model User {
   artworks       Artwork[]
   exhibitions    Exhibition[]
   refreshTokens  RefreshToken[]
-  galleryLikes   GalleryLike[]
+  communityLikes CommunityLike[]
 
   @@unique([provider, providerId])
   @@map("users")
@@ -63,7 +64,8 @@ model Design {
   description      String?
   createdAt        DateTime @default(now()) @map("created_at")
 
-  artworks Artwork[]
+  artworks        Artwork[]
+  recommendations Recommendation[]
 
   @@index([category])
   @@index([category, createdAt]) // 카테고리별 최신순 정렬 최적화
@@ -88,18 +90,18 @@ model Artwork {
   design       Design        @relation(fields: [designId], references: [id])
   exhibition   Exhibition?
   featuredBy   User?         @relation("FeaturedArtwork")
-  likes        GalleryLike[]
+  likes        CommunityLike[]
 
   @@index([userId, status])
   @@index([designId])
-  @@index([status, isPublic, likeCount]) // 갤러리 인기순 조회
-  @@index([status, isPublic, createdAt]) // 갤러리 최신순 조회
+  @@index([status, isPublic, likeCount]) // 커뮤니티 인기순 조회
+  @@index([status, isPublic, createdAt]) // 커뮤니티 최신순 조회
   @@index([userId, updatedAt])           // 내 작품 목록 정렬 최적화
   @@map("artworks")
 }
 
-// 갤러리 좋아요
-model GalleryLike {
+// 커뮤니티 좋아요
+model CommunityLike {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
   artworkId String   @map("artwork_id")
@@ -111,7 +113,7 @@ model GalleryLike {
   @@unique([userId, artworkId])
   @@index([artworkId])
   @@index([createdAt]) // 오늘의 인기 작품 쿼리 최적화
-  @@map("gallery_likes")
+  @@map("community_likes")
 }
 
 // 전시 (완성작 공개)
@@ -145,6 +147,29 @@ model RefreshToken {
   @@index([expiresAt])
   @@index([family])
   @@map("refresh_tokens")
+}
+
+// 공지사항
+model Notice {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("notices")
+}
+
+// 도안 추천 배너
+model Recommendation {
+  id        String   @id @default(uuid())
+  designId  Int      @map("design_id")
+  imageUrl  String   @map("image_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  design Design @relation(fields: [designId], references: [id])
+
+  @@map("recommendations")
 }
 
 enum ArtworkStatus {

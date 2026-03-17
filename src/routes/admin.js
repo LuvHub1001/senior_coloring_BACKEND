@@ -83,4 +83,14 @@ router.get('/users', adminReadLimiter, validate(validators.listUsers), controlle
 router.get('/artworks', adminReadLimiter, validate(validators.listArtworks), controller.listArtworks);
 router.delete('/artworks/:id', adminWriteLimiter, validate(validators.deleteArtwork), controller.deleteArtwork);
 
+// 추천 배너 관리
+router.get('/recommendations', adminReadLimiter, controller.listRecommendations);
+router.post('/recommendations', adminWriteLimiter, upload.single('image'), validateUploadedFiles, validate(validators.createRecommendation), controller.createRecommendation);
+router.delete('/recommendations/:id', adminWriteLimiter, validate(validators.deleteRecommendation), controller.deleteRecommendation);
+
+// 공지사항 관리
+router.get('/notices', adminReadLimiter, controller.listNotices);
+router.post('/notices', adminWriteLimiter, validate(validators.createNotice), controller.createNotice);
+router.delete('/notices/:id', adminWriteLimiter, validate(validators.deleteNotice), controller.deleteNotice);
+
 module.exports = router;

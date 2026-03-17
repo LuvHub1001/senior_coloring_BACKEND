@@ -8,7 +8,7 @@ const mockPrisma = {
     count: jest.fn(),
     update: jest.fn(),
   },
-  galleryLike: {
+  communityLike: {
     findUnique: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
@@ -26,13 +26,13 @@ jest.mock('@prisma/client', () => ({
 }));
 
 const {
-  getGalleryArtworks,
+  getCommunityArtworks,
   getPopularArtworks,
-  getGalleryArtworkDetail,
+  getCommunityArtworkDetail,
   toggleLike,
   popularCache,
   countCache,
-} = require('../../src/services/gallery');
+} = require('../../src/services/community');
 
 const mockArtwork = {
   id: 'artwork-1',
@@ -52,13 +52,13 @@ beforeEach(() => {
   countCache.clear();
 });
 
-describe('Gallery Service', () => {
-  describe('getGalleryArtworks', () => {
-    it('최신순으로 갤러리 작품 목록을 조회한다', async () => {
+describe('Community Service', () => {
+  describe('getCommunityArtworks', () => {
+    it('최신순으로 커뮤니티 작품 목록을 조회한다', async () => {
       mockPrisma.artwork.findMany.mockResolvedValue([mockArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
 
-      const result = await getGalleryArtworks({
+      const result = await getCommunityArtworks({
         sort: 'recent',
         page: 1,
         size: 20,
@@ -95,7 +95,7 @@ describe('Gallery Service', () => {
       mockPrisma.artwork.findMany.mockResolvedValue([mockArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
 
-      await getGalleryArtworks({ sort: 'popular', page: 1, size: 20, userId: null });
+      await getCommunityArtworks({ sort: 'popular', page: 1, size: 20, userId: null });
 
       expect(mockPrisma.artwork.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -109,7 +109,7 @@ describe('Gallery Service', () => {
       mockPrisma.artwork.findMany.mockResolvedValue([artworkWithLike]);
       mockPrisma.artwork.count.mockResolvedValue(1);
 
-      const result = await getGalleryArtworks({
+      const result = await getCommunityArtworks({
         sort: 'recent',
         page: 1,
         size: 20,
@@ -123,7 +123,7 @@ describe('Gallery Service', () => {
       mockPrisma.artwork.findMany.mockResolvedValue([]);
       mockPrisma.artwork.count.mockResolvedValue(50);
 
-      const result = await getGalleryArtworks({
+      const result = await getCommunityArtworks({
         sort: 'recent',
         page: 3,
         size: 10,
@@ -138,11 +138,11 @@ describe('Gallery Service', () => {
     });
   });
 
-  describe('getGalleryArtworkDetail', () => {
-    it('갤러리 작품 상세를 조회한다', async () => {
+  describe('getCommunityArtworkDetail', () => {
+    it('커뮤니티 작품 상세를 조회한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
 
-      const result = await getGalleryArtworkDetail({
+      const result = await getCommunityArtworkDetail({
         artworkId: 'artwork-1',
         userId: null,
       });
@@ -161,7 +161,7 @@ describe('Gallery Service', () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(null);
 
       await expect(
-        getGalleryArtworkDetail({ artworkId: 'nonexistent', userId: null }),
+        getCommunityArtworkDetail({ artworkId: 'nonexistent', userId: null }),
       ).rejects.toThrow('작품을 찾을 수 없습니다.');
     });
 
@@ -172,7 +172,7 @@ describe('Gallery Service', () => {
       });
 
       await expect(
-        getGalleryArtworkDetail({ artworkId: 'artwork-1', userId: null }),
+        getCommunityArtworkDetail({ artworkId: 'artwork-1', userId: null }),
       ).rejects.toThrow('작품을 찾을 수 없습니다.');
     });
 
@@ -183,7 +183,7 @@ describe('Gallery Service', () => {
       });
 
       await expect(
-        getGalleryArtworkDetail({ artworkId: 'artwork-1', userId: null }),
+        getCommunityArtworkDetail({ artworkId: 'artwork-1', userId: null }),
       ).rejects.toThrow('작품을 찾을 수 없습니다.');
     });
   });
@@ -242,7 +242,7 @@ describe('Gallery Service', () => {
 
   describe('getPopularArtworks', () => {
     it('오늘 좋아요가 없으면 전체 인기순으로 fallback', async () => {
-      mockPrisma.galleryLike.groupBy.mockResolvedValue([]);
+      mockPrisma.communityLike.groupBy.mockResolvedValue([]);
       mockPrisma.artwork.findMany.mockResolvedValue([mockArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
 
@@ -253,7 +253,7 @@ describe('Gallery Service', () => {
     });
 
     it('오늘의 인기 작품을 조회한다', async () => {
-      mockPrisma.galleryLike.groupBy.mockResolvedValue([
+      mockPrisma.communityLike.groupBy.mockResolvedValue([
         { artworkId: 'artwork-1', _count: { artworkId: 3 } },
       ]);
       mockPrisma.artwork.findMany.mockResolvedValue([mockArtwork]);

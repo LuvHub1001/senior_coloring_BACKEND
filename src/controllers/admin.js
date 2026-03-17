@@ -170,6 +170,77 @@ async function deleteArtwork(req, res, next) {
   }
 }
 
+// 추천 배너 목록 조회
+async function listRecommendations(req, res, next) {
+  try {
+    const data = await adminService.getRecommendations();
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// 추천 배너 등록
+async function createRecommendation(req, res, next) {
+  try {
+    const imageFile = req.file;
+    if (!imageFile) {
+      return res.status(400).json({ success: false, error: '배너 이미지 파일(image)이 필요합니다.' });
+    }
+
+    const { designId } = req.body;
+    const rec = await adminService.createRecommendation({
+      designId,
+      file: imageFile,
+    });
+
+    res.status(201).json({ success: true, data: rec });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// 추천 배너 삭제
+async function deleteRecommendation(req, res, next) {
+  try {
+    await adminService.deleteRecommendation(req.params.id);
+    res.json({ success: true, data: null });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// 공지사항 목록 조회
+async function listNotices(req, res, next) {
+  try {
+    const data = await adminService.getNotices();
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// 공지사항 등록
+async function createNotice(req, res, next) {
+  try {
+    const { title, content } = req.body;
+    const notice = await adminService.createNotice({ title, content });
+    res.status(201).json({ success: true, data: notice });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// 공지사항 삭제
+async function deleteNotice(req, res, next) {
+  try {
+    await adminService.deleteNotice(req.params.id);
+    res.json({ success: true, data: null });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   stats,
   listDesigns,
@@ -183,4 +254,10 @@ module.exports = {
   listUsers,
   listArtworks,
   deleteArtwork,
+  listRecommendations,
+  createRecommendation,
+  deleteRecommendation,
+  listNotices,
+  createNotice,
+  deleteNotice,
 };

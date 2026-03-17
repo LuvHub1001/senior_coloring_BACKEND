@@ -1,4 +1,5 @@
 const { createDesign, getDesigns, getDesignById, getCategories } = require('../services/design');
+const { getRecommendations } = require('../services/admin');
 
 // 도안 등록 (이미지 업로드)
 async function create(req, res, next) {
@@ -56,4 +57,14 @@ async function categories(req, res, next) {
   }
 }
 
-module.exports = { create, list, detail, categories };
+// 추천 배너 목록 조회
+async function recommendations(req, res, next) {
+  try {
+    const data = await getRecommendations();
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { create, list, detail, categories, recommendations };

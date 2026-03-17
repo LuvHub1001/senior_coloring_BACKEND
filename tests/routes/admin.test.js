@@ -427,7 +427,7 @@ describe('Admin Artworks', () => {
     mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
     mockPrisma.user.updateMany.mockResolvedValue({ count: 0 });
     mockPrisma.exhibition.deleteMany.mockResolvedValue({ count: 0 });
-    mockPrisma.galleryLike.deleteMany.mockResolvedValue({ count: 0 });
+    mockPrisma.communityLike.deleteMany.mockResolvedValue({ count: 0 });
     mockPrisma.artwork.delete.mockResolvedValue(mockArtwork);
 
     const res = await request(app)
@@ -455,5 +455,199 @@ describe('Admin Artworks', () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe('Admin Recommendations', () => {
+  const mockRec = {
+    id: 'b1c2d3e4-f5a6-7890-abcd-ef1234567890',
+    imageUrl: 'https://storage.supabase.co/recommendations/banner.png',
+    designId: 1,
+  };
+
+  test('POST /api/admin/recommendations - 추천 배너를 등록한다', async () => {
+    mockPrisma.recommendation.count.mockResolvedValue(0);
+    mockPrisma.design.findUnique.mockResolvedValue({ id: 1, title: '꽃 도안' });
+    mockPrisma.recommendation.create.mockResolvedValue(mockRec);
+
+    const res = await request(app)
+      .post('/api/admin/recommendations')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .attach('image', VALID_PNG_BUFFER, { filename: 'banner.png', contentType: 'image/png' })
+      .field('designId', '1');
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.designId).toBe(1);
+  });
+
+  test('POST /api/admin/recommendations - 이미지 없이 요청하면 400을 반환한다', async () => {
+    const res = await request(app)
+      .post('/api/admin/recommendations')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .field('designId', '1');
+
+    expect(res.status).toBe(400);
+  });
+
+  test('POST /api/admin/recommendations - 존재하지 않는 도안이면 404를 반환한다', async () => {
+    mockPrisma.recommendation.count.mockResolvedValue(0);
+    mockPrisma.design.findUnique.mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/api/admin/recommendations')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .attach('image', VALID_PNG_BUFFER, { filename: 'banner.png', contentType: 'image/png' })
+      .field('designId', '999');
+
+    expect(res.status).toBe(404);
+  });
+
+  test('POST /api/admin/recommendations - 최대 10개 초과 시 409를 반환한다', async () => {
+    mockPrisma.recommendation.count.mockResolvedValue(10);
+
+    const res = await request(app)
+      .post('/api/admin/recommendations')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .attach('image', VALID_PNG_BUFFER, { filename: 'banner.png', contentType: 'image/png' })
+      .field('designId', '1');
+
+    expect(res.status).toBe(409);
+  });
+
+  test('DELETE /api/admin/recommendations/:id - 추천 배너를 삭제한다', async () => {
+    mockPrisma.recommendation.findUnique.mockResolvedValue(mockRec);
+    mockPrisma.recommendation.delete.mockResolvedValue(mockRec);
+
+    const res = await request(app)
+      .delete(`/api/admin/recommendations/${mockRec.id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeNull();
+  });
+
+  test('DELETE /api/admin/recommendations/:id - 존재하지 않는 배너이면 404를 반환한다', async () => {
+    mockPrisma.recommendation.findUnique.mockResolvedValue(null);
+
+    const res = await request(app)
+      .delete('/api/admin/recommendations/b1c2d3e4-f5a6-7890-abcd-ef1234567890')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /api/designs/recommendations', () => {
+  test('인증된 사용자가 추천 배너 목록을 조회한다', async () => {
+    const mockRecs = [
+      { id: 'rec-1', imageUrl: 'https://cdn.example.com/b1.png', designId: 1 },
+      { id: 'rec-2', imageUrl: 'https://cdn.example.com/b2.png', designId: 2 },
+    ];
+    mockPrisma.recommendation.findMany.mockResolvedValue(mockRecs);
+
+    const res = await request(app)
+      .get('/api/designs/recommendations')
+      .set('Authorization', `Bearer ${userToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(2);
+    expect(res.body.data[0].designId).toBe(1);
+  });
+
+  test('인증 없이 요청하면 401을 반환한다', async () => {
+    const res = await request(app).get('/api/designs/recommendations');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('Admin Notices', () => {
+  const mockNotice = {
+    id: 'c1d2e3f4-a5b6-7890-abcd-ef1234567890',
+    title: '오픈 갤러리 삭제 규칙',
+    content: '부적절한 작품은 사전 경고 없이 삭제될 수 있습니다.',
+    createdAt: new Date().toISOString(),
+  };
+
+  test('GET /api/admin/notices - 공지사항 목록을 조회한다', async () => {
+    mockPrisma.notice.findMany.mockResolvedValue([mockNotice]);
+
+    const res = await request(app)
+      .get('/api/admin/notices')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].title).toBe('오픈 갤러리 삭제 규칙');
+  });
+
+  test('POST /api/admin/notices - 공지사항을 등록한다', async () => {
+    mockPrisma.notice.create.mockResolvedValue(mockNotice);
+
+    const res = await request(app)
+      .post('/api/admin/notices')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: '오픈 갤러리 삭제 규칙', content: '부적절한 작품은 사전 경고 없이 삭제될 수 있습니다.' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.title).toBe('오픈 갤러리 삭제 규칙');
+  });
+
+  test('POST /api/admin/notices - 필수 필드 누락 시 400을 반환한다', async () => {
+    const res = await request(app)
+      .post('/api/admin/notices')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: '' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('DELETE /api/admin/notices/:id - 공지사항을 삭제한다', async () => {
+    mockPrisma.notice.findUnique.mockResolvedValue(mockNotice);
+    mockPrisma.notice.delete.mockResolvedValue(mockNotice);
+
+    const res = await request(app)
+      .delete(`/api/admin/notices/${mockNotice.id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeNull();
+  });
+
+  test('DELETE /api/admin/notices/:id - 존재하지 않는 공지이면 404를 반환한다', async () => {
+    mockPrisma.notice.findUnique.mockResolvedValue(null);
+
+    const res = await request(app)
+      .delete('/api/admin/notices/c1d2e3f4-a5b6-7890-abcd-ef1234567890')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /api/notices', () => {
+  test('인증된 사용자가 공지사항 목록을 조회한다', async () => {
+    const mockNotices = [
+      { id: 'n-1', title: '공지1', content: '내용1', createdAt: new Date().toISOString() },
+    ];
+    mockPrisma.notice.findMany.mockResolvedValue(mockNotices);
+
+    const res = await request(app)
+      .get('/api/notices')
+      .set('Authorization', `Bearer ${userToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveLength(1);
+  });
+
+  test('인증 없이 요청하면 401을 반환한다', async () => {
+    const res = await request(app).get('/api/notices');
+    expect(res.status).toBe(401);
   });
 });

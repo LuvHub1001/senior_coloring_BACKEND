@@ -40,6 +40,7 @@ describe('User Service', () => {
           id: true,
           nickname: true,
           avatarUrl: true,
+          statusMessage: true,
           email: true,
           role: true,
           selectedThemeId: true,
@@ -74,18 +75,21 @@ describe('User Service', () => {
 
   describe('updateNickname', () => {
     test('닉네임을 변경하고 전체 프로필을 반환한다', async () => {
-      mockPrisma.user.update.mockResolvedValue({ id: 'user-1' });
-      mockPrisma.user.findUnique.mockResolvedValue({
-        ...mockUser,
-        nickname: '새닉네임',
-      });
+      const updatedUser = { ...mockUser, nickname: '새닉네임' };
+      mockPrisma.user.update.mockResolvedValue(updatedUser);
 
       const result = await updateNickname('user-1', '새닉네임');
 
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
         data: { nickname: '새닉네임' },
-        select: { id: true },
+        select: expect.objectContaining({
+          id: true,
+          nickname: true,
+          statusMessage: true,
+          email: true,
+          role: true,
+        }),
       });
       expect(result.nickname).toBe('새닉네임');
       expect(result.id).toBe('user-1');
