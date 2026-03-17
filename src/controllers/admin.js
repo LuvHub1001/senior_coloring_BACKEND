@@ -166,6 +166,16 @@ async function deleteArtwork(req, res, next) {
   }
 }
 
+// 작품 공개/비공개 전환
+async function publishArtwork(req, res, next) {
+  try {
+    await adminService.publishArtwork(req.params.id, req.body.isPublic);
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // 추천 배너 목록 조회
 async function listRecommendations(req, res, next) {
   try {
@@ -250,6 +260,7 @@ module.exports = {
   listUsers,
   listArtworks,
   deleteArtwork,
+  publishArtwork,
   listRecommendations,
   createRecommendation,
   deleteRecommendation,

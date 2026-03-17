@@ -171,7 +171,7 @@ describe('Artwork Service', () => {
 
       expect(mockPrisma.artwork.update).toHaveBeenCalledWith({
         where: { id: 'artwork-1' },
-        data: { status: 'COMPLETED', progress: 100, isPublic: true },
+        data: { status: 'COMPLETED', progress: 100 },
         include: { design: true },
       });
       expect(result.status).toBe('COMPLETED');
@@ -318,6 +318,7 @@ describe('Artwork Service', () => {
         where: { userId: 'user-1' },
         select: {
           id: true,
+          title: true,
           imageUrl: true,
           progress: true,
           status: true,
@@ -342,6 +343,7 @@ describe('Artwork Service', () => {
         where: { userId: 'user-1', status: 'COMPLETED' },
         select: {
           id: true,
+          title: true,
           imageUrl: true,
           progress: true,
           status: true,

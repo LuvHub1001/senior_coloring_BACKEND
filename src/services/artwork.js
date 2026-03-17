@@ -99,7 +99,7 @@ async function completeArtwork({ artworkId, userId }) {
   const [artwork, user] = await Promise.all([
     prisma.artwork.update({
       where: { id: artworkId },
-      data: { status: 'COMPLETED', progress: 100, isPublic: true },
+      data: { status: 'COMPLETED', progress: 100 },
       include: { design: true },
     }),
     prisma.user.update({
@@ -170,6 +170,7 @@ async function getMyArtworks({ userId, status }) {
     where,
     select: {
       id: true,
+      title: true,
       imageUrl: true,
       progress: true,
       status: true,
@@ -260,7 +261,7 @@ async function featureArtwork({ artworkId, userId }) {
 }
 
 // 작품 공개/비공개 전환
-async function publishArtwork({ artworkId, userId, isPublic }) {
+async function publishArtwork({ artworkId, userId, isPublic, title }) {
   const artwork = await getOwnArtwork(artworkId, userId, { includeDesign: false });
 
   if (artwork.status !== 'COMPLETED') {
@@ -269,13 +270,16 @@ async function publishArtwork({ artworkId, userId, isPublic }) {
     throw error;
   }
 
+  const data = { isPublic };
+  if (title !== undefined) data.title = title;
+
   const updated = await prisma.artwork.update({
     where: { id: artworkId },
-    data: { isPublic },
-    select: { id: true, isPublic: true },
+    data,
+    select: { id: true, isPublic: true, title: true },
   });
 
-  return { artworkId: updated.id, isPublic: updated.isPublic };
+  return { artworkId: updated.id, isPublic: updated.isPublic, title: updated.title };
 }
 
 module.exports = {

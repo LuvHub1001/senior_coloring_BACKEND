@@ -34,6 +34,7 @@ const publishArtwork = z.object({
   }),
   body: z.object({
     isPublic: z.boolean(),
+    title: z.string().min(1, 'title은 1자 이상이어야 합니다.').max(50, 'title은 50자 이하여야 합니다.').optional(),
   }),
 });
 

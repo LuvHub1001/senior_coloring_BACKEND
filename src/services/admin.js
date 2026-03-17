@@ -353,6 +353,7 @@ async function getArtworks({ page: rawPage, pageSize: rawPageSize, search }) {
         userId: true,
         imageUrl: true,
         status: true,
+        isPublic: true,
         createdAt: true,
         updatedAt: true,
         user: { select: { nickname: true } },
@@ -369,6 +370,7 @@ async function getArtworks({ page: rawPage, pageSize: rawPageSize, search }) {
     designTitle: artwork.design.title,
     imageUrl: artwork.imageUrl,
     status: artwork.status,
+    isPublic: artwork.isPublic,
     createdAt: artwork.createdAt,
     updatedAt: artwork.updatedAt,
   }));
@@ -405,6 +407,21 @@ async function deleteArtwork(artworkId) {
 
     // 작품 삭제
     await tx.artwork.delete({ where: { id: artworkId } });
+  });
+}
+
+// 작품 공개/비공개 전환 (관리자)
+async function publishArtwork(artworkId, isPublic) {
+  const artwork = await prisma.artwork.findUnique({ where: { id: artworkId } });
+  if (!artwork) {
+    const error = new Error('작품을 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  await prisma.artwork.update({
+    where: { id: artworkId },
+    data: { isPublic },
   });
 }
 
@@ -501,6 +518,7 @@ module.exports = {
   getUsers,
   getArtworks,
   deleteArtwork,
+  publishArtwork,
   getRecommendations,
   createRecommendation,
   deleteRecommendation,

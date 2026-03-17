@@ -24,6 +24,7 @@ async function getCommunityArtworks({ sort, page, size, userId }) {
       where,
       select: {
         id: true,
+        title: true,
         imageUrl: true,
         likeCount: true,
         createdAt: true,
@@ -52,7 +53,7 @@ async function getCommunityArtworks({ sort, page, size, userId }) {
   return {
     content: artworks.map((a) => ({
       artworkId: a.id,
-      title: a.design.title,
+      title: a.title || a.design.title,
       imageUrl: a.imageUrl,
       author: {
         id: a.user.id,
@@ -102,6 +103,7 @@ async function getPopularArtworks({ size, userId }) {
     where: { id: { in: ids }, status: 'COMPLETED', isPublic: true },
     select: {
       id: true,
+      title: true,
       imageUrl: true,
       likeCount: true,
       createdAt: true,
@@ -122,7 +124,7 @@ async function getPopularArtworks({ size, userId }) {
 
   return artworks.map((a) => ({
     artworkId: a.id,
-    title: a.design.title,
+    title: a.title || a.design.title,
     imageUrl: a.imageUrl,
     author: {
       id: a.user.id,
@@ -140,6 +142,7 @@ async function getCommunityArtworkDetail({ artworkId, userId }) {
     where: { id: artworkId },
     select: {
       id: true,
+      title: true,
       imageUrl: true,
       likeCount: true,
       createdAt: true,
@@ -164,7 +167,7 @@ async function getCommunityArtworkDetail({ artworkId, userId }) {
 
   return {
     artworkId: artwork.id,
-    title: artwork.design.title,
+    title: artwork.title || artwork.design.title,
     imageUrl: artwork.imageUrl,
     author: {
       id: artwork.user.id,

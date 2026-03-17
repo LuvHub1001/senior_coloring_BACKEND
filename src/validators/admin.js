@@ -80,6 +80,15 @@ const deleteArtwork = z.object({
   }),
 });
 
+const publishArtwork = z.object({
+  params: z.object({
+    id: z.string().uuid('올바른 작품 ID 형식이 아닙니다.'),
+  }),
+  body: z.object({
+    isPublic: z.boolean(),
+  }),
+});
+
 const createRecommendation = z.object({
   body: z.object({
     designId: z.coerce.number().int().positive('designId는 필수입니다.'),
@@ -117,6 +126,7 @@ module.exports = {
   listUsers,
   listArtworks,
   deleteArtwork,
+  publishArtwork,
   createRecommendation,
   deleteRecommendation,
   createNotice,

@@ -115,6 +115,7 @@ async function publish(req, res, next) {
       artworkId: req.params.id,
       userId: req.user.id,
       isPublic: req.body.isPublic,
+      title: req.body.title,
     });
 
     res.json({ success: true, data: result });

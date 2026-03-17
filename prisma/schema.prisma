@@ -76,6 +76,7 @@ model Artwork {
   userId          String        @map("user_id")
   designId        Int           @map("design_id")
   rootArtworkId   String?       @map("root_artwork_id") // 수정하기로 생성된 경우 최초 원본 작품 ID
+  title           String?       // 커뮤니티 공개 시 사용자 지정 제목 (null이면 도안 제목 사용)
   imageUrl        String?       @map("image_url")
   progress        Int           @default(0)
   status          ArtworkStatus @default(IN_PROGRESS)

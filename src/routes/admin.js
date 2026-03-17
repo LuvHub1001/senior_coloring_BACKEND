@@ -81,6 +81,7 @@ router.get('/users', adminReadLimiter, validate(validators.listUsers), controlle
 
 // 작품 관리
 router.get('/artworks', adminReadLimiter, validate(validators.listArtworks), controller.listArtworks);
+router.patch('/artworks/:id/publish', adminWriteLimiter, validate(validators.publishArtwork), controller.publishArtwork);
 router.delete('/artworks/:id', adminWriteLimiter, validate(validators.deleteArtwork), controller.deleteArtwork);
 
 // 추천 배너 관리
