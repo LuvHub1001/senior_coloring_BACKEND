@@ -39,4 +39,25 @@ const proxyLimiter = rateLimit({
   message: { success: false, error: '이미지 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
 });
 
-module.exports = { apiLimiter, authLimiter, uploadLimiter, proxyLimiter };
+// 관리자 조회: 프로덕션 15분당 100회, 개발 15분당 500회 (사용자 ID 기반)
+// admin 라우트는 authenticate 이후에만 도달하므로 req.user.id가 항상 존재
+const adminReadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 500 : 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `admin:read:${req.user.id}`,
+  message: { success: false, error: '관리자 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+});
+
+// 관리자 변경(생성/수정/삭제): 프로덕션 15분당 30회, 개발 15분당 200회 (사용자 ID 기반)
+const adminWriteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 200 : 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `admin:write:${req.user.id}`,
+  message: { success: false, error: '관리자 변경 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+});
+
+module.exports = { apiLimiter, authLimiter, uploadLimiter, proxyLimiter, adminReadLimiter, adminWriteLimiter };

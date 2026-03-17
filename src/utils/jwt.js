@@ -10,7 +10,7 @@ const REFRESH_TOKEN_EXPIRES_DAYS = 30;
 // Access Token 생성 (단기)
 function generateToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email },
+    { id: user.id, email: user.email, role: user.role || 'USER' },
     JWT_SECRET,
     { expiresIn: ACCESS_TOKEN_EXPIRES_IN, algorithm: 'HS256' },
   );

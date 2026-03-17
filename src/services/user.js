@@ -8,6 +8,7 @@ async function getUserProfile(userId) {
       nickname: true,
       avatarUrl: true,
       email: true,
+      role: true,
       selectedThemeId: true,
       selectedTheme: { select: { id: true, name: true, toggleType: true } },
       featuredArtworkId: true,

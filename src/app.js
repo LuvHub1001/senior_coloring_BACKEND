@@ -17,6 +17,7 @@ const themeRouter = require('./routes/theme');
 const imageRouter = require('./routes/image');
 const galleryRouter = require('./routes/gallery');
 const homeRouter = require('./routes/home');
+const adminRouter = require('./routes/admin');
 const prisma = require('./config/prisma');
 const { allowedOrigins } = require('./config/cors');
 
@@ -107,6 +108,7 @@ app.use('/api/themes', themeRouter);
 app.use('/api/images', imageRouter);
 app.use('/api/gallery', galleryRouter);
 app.use('/api/home', homeRouter);
+app.use('/api/admin', adminRouter);
 
 // 에러 핸들링
 app.use(errorHandler);
