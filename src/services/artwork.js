@@ -1,12 +1,6 @@
-const sharp = require('sharp');
 const prisma = require('../config/prisma');
-const logger = require('../config/logger');
-const { uploadFile, removeFile, generateFileName } = require('../utils/storage');
+const { uploadFile, removeFile } = require('../utils/storage');
 const BUCKET_NAME = 'artworks';
-
-const SHARE_IMAGE_SIZE = 600;
-const SHARE_BG_COLOR = { r: 209, g: 192, b: 186 }; // #D1C0BA
-const FETCH_TIMEOUT = 10000;
 
 // 색칠 시작 (항상 새 작품 생성)
 async function createArtwork({ userId, designId, rootArtworkId }) {
@@ -203,10 +197,6 @@ async function deleteArtwork({ artworkId, userId }) {
   if (artwork.imageUrl) {
     await removeFile(BUCKET_NAME, artwork.imageUrl);
   }
-  if (artwork.shareImageUrl) {
-    await removeFile(BUCKET_NAME, artwork.shareImageUrl);
-  }
-
   // 트랜잭션으로 연관 데이터 정리 후 삭제
   return prisma.$transaction(async (tx) => {
     // 대표 작품인 경우 해제
@@ -288,118 +278,6 @@ async function publishArtwork({ artworkId, userId, isPublic }) {
   return { artworkId: updated.id, isPublic: updated.isPublic };
 }
 
-// 공유용 이미지 합성
-async function generateShareImage({ artworkId, userId }) {
-  // 작품 + 유저 테마 조회
-  const artwork = await prisma.artwork.findUnique({
-    where: { id: artworkId },
-    select: {
-      id: true,
-      userId: true,
-      imageUrl: true,
-      status: true,
-      shareImageUrl: true,
-      user: {
-        select: {
-          selectedTheme: {
-            select: { frameImageUrl: true },
-          },
-        },
-      },
-    },
-  });
-
-  if (!artwork || artwork.userId !== userId) {
-    const error = new Error('작품을 찾을 수 없습니다.');
-    error.status = 404;
-    throw error;
-  }
-
-  if (artwork.status !== 'COMPLETED') {
-    const error = new Error('완성된 작품만 공유할 수 있습니다.');
-    error.status = 400;
-    throw error;
-  }
-
-  if (!artwork.imageUrl) {
-    const error = new Error('작품 이미지가 없습니다.');
-    error.status = 400;
-    throw error;
-  }
-
-  // 이미 합성된 이미지가 있으면 캐시 반환
-  if (artwork.shareImageUrl) {
-    return { imageUrl: artwork.shareImageUrl };
-  }
-
-  // 원본 이미지 가져오기
-  const artworkBuffer = await fetchImageBuffer(artwork.imageUrl);
-
-  // 배경 생성 (정사각형)
-  const size = SHARE_IMAGE_SIZE;
-  let composite = sharp({
-    create: {
-      width: size,
-      height: size,
-      channels: 3,
-      background: SHARE_BG_COLOR,
-    },
-  }).jpeg();
-
-  // 작품 이미지 리사이즈 (패딩 포함하여 중앙 배치)
-  const artworkResized = await sharp(artworkBuffer)
-    .resize(Math.round(size * 0.75), Math.round(size * 0.75), { fit: 'contain', background: SHARE_BG_COLOR })
-    .toBuffer();
-
-  const layers = [
-    {
-      input: artworkResized,
-      left: Math.round(size * 0.125),
-      top: Math.round(size * 0.125),
-    },
-  ];
-
-  // 액자 프레임 오버레이 (테마에 설정된 경우)
-  const frameUrl = artwork.user.selectedTheme?.frameImageUrl;
-  if (frameUrl) {
-    try {
-      const frameBuffer = await fetchImageBuffer(frameUrl);
-      const frameResized = await sharp(frameBuffer)
-        .resize(size, size, { fit: 'cover' })
-        .toBuffer();
-      layers.push({ input: frameResized, left: 0, top: 0 });
-    } catch (err) {
-      logger.warn('액자 프레임 로드 실패, 프레임 없이 합성', { frameUrl, error: err.message });
-    }
-  }
-
-  const composedBuffer = await composite.composite(layers).toBuffer();
-
-  // Supabase에 업로드
-  const fileName = `shares/${generateFileName('share.jpg', artworkId)}`;
-  const imageUrl = await uploadFile(BUCKET_NAME, fileName, composedBuffer, 'image/jpeg');
-
-  // 캐시 저장
-  await prisma.artwork.update({
-    where: { id: artworkId },
-    data: { shareImageUrl: imageUrl },
-    select: { id: true },
-  });
-
-  return { imageUrl };
-}
-
-// 외부 이미지 fetch 헬퍼
-async function fetchImageBuffer(url) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
-  if (!response.ok) {
-    const error = new Error('이미지를 불러올 수 없습니다.');
-    error.status = 502;
-    throw error;
-  }
-  return Buffer.from(await response.arrayBuffer());
-}
-
 module.exports = {
   createArtwork,
   saveArtwork,
@@ -409,5 +287,4 @@ module.exports = {
   deleteArtwork,
   featureArtwork,
   publishArtwork,
-  generateShareImage,
 };
