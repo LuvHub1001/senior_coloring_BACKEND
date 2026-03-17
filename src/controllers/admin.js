@@ -90,13 +90,11 @@ async function listThemes(req, res, next) {
 async function createTheme(req, res, next) {
   try {
     const file = req.file || null;
-    const { name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType } = req.body;
+    const { name, requiredArtworks, textColor, toggleType } = req.body;
 
     const theme = await adminService.createTheme({
       name,
       requiredArtworks,
-      buttonColor,
-      buttonTextColor,
       textColor,
       toggleType,
       file,
@@ -111,14 +109,12 @@ async function createTheme(req, res, next) {
 // 테마 수정
 async function updateTheme(req, res, next) {
   try {
-    const { name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType } = req.body;
+    const { name, requiredArtworks, textColor, toggleType } = req.body;
     const file = req.file || null;
 
     const theme = await adminService.updateTheme(req.params.id, {
       name,
       requiredArtworks,
-      buttonColor,
-      buttonTextColor,
       textColor,
       toggleType,
       file,

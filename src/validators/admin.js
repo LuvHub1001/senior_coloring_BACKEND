@@ -43,8 +43,6 @@ const createTheme = z.object({
   body: z.object({
     name: z.string().min(1, 'name은 필수입니다.').max(50, 'name은 50자 이하여야 합니다.'),
     requiredArtworks: z.coerce.number().int().min(0).default(0),
-    buttonColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, '올바른 HEX 색상 코드를 입력해 주세요.').optional(),
-    buttonTextColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, '올바른 HEX 색상 코드를 입력해 주세요.').optional(),
     textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, '올바른 HEX 색상 코드를 입력해 주세요.').optional(),
     toggleType: z.enum(['LIGHT', 'DARK']).default('LIGHT'),
   }),
@@ -57,8 +55,6 @@ const updateTheme = z.object({
   body: z.object({
     name: z.string().min(1, 'name은 1자 이상이어야 합니다.').max(50, 'name은 50자 이하여야 합니다.').optional(),
     requiredArtworks: z.coerce.number().int().min(0).optional(),
-    buttonColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, '올바른 HEX 색상 코드를 입력해 주세요.').optional(),
-    buttonTextColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, '올바른 HEX 색상 코드를 입력해 주세요.').optional(),
     textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, '올바른 HEX 색상 코드를 입력해 주세요.').optional(),
     toggleType: z.enum(['LIGHT', 'DARK']).optional(),
   }),

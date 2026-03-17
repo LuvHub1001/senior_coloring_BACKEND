@@ -30,8 +30,8 @@ const testUser = { id: 'user-1', email: 'test@example.com' };
 const token = generateToken(testUser);
 
 const mockThemes = [
-  { id: 1, name: '기본', requiredArtworks: 0, imageUrl: null, buttonColor: '#000', buttonTextColor: '#fff', textColor: '#333', sortOrder: 0 },
-  { id: 2, name: '바다', requiredArtworks: 3, imageUrl: null, buttonColor: '#00f', buttonTextColor: '#fff', textColor: '#006', sortOrder: 1 },
+  { id: 1, name: '기본', requiredArtworks: 0, imageUrl: null, textColor: '#333', sortOrder: 0 },
+  { id: 2, name: '바다', requiredArtworks: 3, imageUrl: null, textColor: '#006', sortOrder: 1 },
 ];
 
 beforeEach(() => {

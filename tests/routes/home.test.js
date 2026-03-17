@@ -35,7 +35,7 @@ const mockUserProfile = {
 };
 
 const mockThemes = [
-  { id: 1, name: '기본', requiredArtworks: 0, imageUrl: null, buttonColor: null, buttonTextColor: null, textColor: null, toggleType: 'LIGHT', sortOrder: 0 },
+  { id: 1, name: '기본', requiredArtworks: 0, imageUrl: null, textColor: null, toggleType: 'LIGHT', sortOrder: 0 },
 ];
 
 const mockArtworks = [

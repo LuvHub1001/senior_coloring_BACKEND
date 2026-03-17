@@ -25,13 +25,11 @@ async function select(req, res, next) {
 // 테마 생성
 async function create(req, res, next) {
   try {
-    const { name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType, sortOrder } = req.body;
+    const { name, requiredArtworks, textColor, toggleType, sortOrder } = req.body;
 
     const theme = await themeService.createTheme({
       name,
       requiredArtworks,
-      buttonColor,
-      buttonTextColor,
       textColor,
       toggleType,
       sortOrder,

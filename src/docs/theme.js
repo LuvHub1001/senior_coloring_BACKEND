@@ -36,14 +36,6 @@
  *                 type: integer
  *                 description: "해금에 필요한 완성 작품 수 (기본값: 0)"
  *                 example: 3
- *               buttonColor:
- *                 type: string
- *                 maxLength: 20
- *                 example: "#FF6B6B"
- *               buttonTextColor:
- *                 type: string
- *                 maxLength: 20
- *                 example: "#FFFFFF"
  *               textColor:
  *                 type: string
  *                 maxLength: 20

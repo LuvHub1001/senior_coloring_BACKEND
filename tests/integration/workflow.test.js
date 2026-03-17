@@ -101,8 +101,8 @@ describe('통합 워크플로우: 도안 → 작품 생성 → 완성 → 테마
 
     // 5. 해금된 테마 선택
     const themes = [
-      { id: 1, name: '기본', requiredArtworks: 0, sortOrder: 0, imageUrl: null, buttonColor: '#000', buttonTextColor: '#fff', textColor: '#333' },
-      { id: 2, name: '바다', requiredArtworks: 1, sortOrder: 1, imageUrl: null, buttonColor: '#00f', buttonTextColor: '#fff', textColor: '#006' },
+      { id: 1, name: '기본', requiredArtworks: 0, sortOrder: 0, imageUrl: null, textColor: '#333' },
+      { id: 2, name: '바다', requiredArtworks: 1, sortOrder: 1, imageUrl: null, textColor: '#006' },
     ];
     mockPrisma.theme.findUnique.mockResolvedValue(themes[1]);
     mockPrisma.user.findUnique.mockResolvedValue({ totalCompletedCount: 1 });

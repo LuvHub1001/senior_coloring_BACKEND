@@ -173,8 +173,6 @@ async function getThemes({ page: rawPage, pageSize: rawPageSize, search }) {
     name: theme.name,
     requiredArtworks: theme.requiredArtworks,
     imageUrl: theme.imageUrl,
-    buttonColor: theme.buttonColor,
-    buttonTextColor: theme.buttonTextColor,
     textColor: theme.textColor,
     toggleType: theme.toggleType,
   }));
@@ -182,7 +180,7 @@ async function getThemes({ page: rawPage, pageSize: rawPageSize, search }) {
   return { data: items, totalCount, page, pageSize };
 }
 
-async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType, file }) {
+async function createTheme({ name, requiredArtworks, textColor, toggleType, file }) {
   // 중복 이름 검사
   const existing = await prisma.theme.findUnique({ where: { name } });
   if (existing) {
@@ -201,8 +199,6 @@ async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColo
     data: {
       name,
       requiredArtworks: requiredArtworks || 0,
-      buttonColor: buttonColor || null,
-      buttonTextColor: buttonTextColor || null,
       textColor: textColor || null,
       toggleType: toggleType || 'LIGHT',
       imageUrl,
@@ -213,7 +209,7 @@ async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColo
   return theme;
 }
 
-async function updateTheme(id, { name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType, file }) {
+async function updateTheme(id, { name, requiredArtworks, textColor, toggleType, file }) {
   const theme = await prisma.theme.findUnique({ where: { id } });
   if (!theme) {
     const error = new Error('테마를 찾을 수 없습니다.');
@@ -234,8 +230,6 @@ async function updateTheme(id, { name, requiredArtworks, buttonColor, buttonText
   const data = {};
   if (name !== undefined) data.name = name;
   if (requiredArtworks !== undefined) data.requiredArtworks = requiredArtworks;
-  if (buttonColor !== undefined) data.buttonColor = buttonColor;
-  if (buttonTextColor !== undefined) data.buttonTextColor = buttonTextColor;
   if (textColor !== undefined) data.textColor = textColor;
   if (toggleType !== undefined) data.toggleType = toggleType;
 
@@ -260,8 +254,6 @@ async function updateTheme(id, { name, requiredArtworks, buttonColor, buttonText
     name: updated.name,
     requiredArtworks: updated.requiredArtworks,
     imageUrl: updated.imageUrl,
-    buttonColor: updated.buttonColor,
-    buttonTextColor: updated.buttonTextColor,
     textColor: updated.textColor,
     toggleType: updated.toggleType,
   };

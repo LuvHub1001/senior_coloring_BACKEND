@@ -105,8 +105,6 @@ const options = {
             name: { type: 'string' },
             requiredArtworks: { type: 'integer' },
             imageUrl: { type: 'string', nullable: true },
-            buttonColor: { type: 'string', nullable: true },
-            buttonTextColor: { type: 'string', nullable: true },
             textColor: { type: 'string', nullable: true },
             toggleType: { type: 'string', enum: ['LIGHT', 'DARK'] },
             sortOrder: { type: 'integer' },

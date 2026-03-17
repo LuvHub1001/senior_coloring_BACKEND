@@ -26,8 +26,6 @@ async function getThemes(userId) {
     name: theme.name,
     requiredArtworks: theme.requiredArtworks,
     imageUrl: theme.imageUrl,
-    buttonColor: theme.buttonColor,
-    buttonTextColor: theme.buttonTextColor,
     textColor: theme.textColor,
     toggleType: theme.toggleType,
     unlocked: completedCount >= theme.requiredArtworks,
@@ -66,7 +64,7 @@ async function selectTheme(userId, themeId) {
 }
 
 // 테마 생성 (이미지 포함)
-async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColor, textColor, toggleType, sortOrder, file }) {
+async function createTheme({ name, requiredArtworks, textColor, toggleType, sortOrder, file }) {
   // 중복 이름 검사
   const existing = await prisma.theme.findUnique({ where: { name } });
   if (existing) {
@@ -86,8 +84,6 @@ async function createTheme({ name, requiredArtworks, buttonColor, buttonTextColo
     data: {
       name,
       requiredArtworks: requiredArtworks || 0,
-      buttonColor: buttonColor || null,
-      buttonTextColor: buttonTextColor || null,
       textColor: textColor || null,
       toggleType: toggleType || 'LIGHT',
       sortOrder: sortOrder || 0,

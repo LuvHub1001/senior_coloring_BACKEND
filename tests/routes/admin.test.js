@@ -245,8 +245,6 @@ describe('Admin Themes', () => {
     name: '봄 테마',
     requiredArtworks: 3,
     imageUrl: 'https://storage.supabase.co/themes/bg.png',
-    buttonColor: '#FF6B6B',
-    buttonTextColor: '#FFFFFF',
     textColor: '#333333',
     toggleType: 'LIGHT',
     sortOrder: 0,
@@ -277,9 +275,6 @@ describe('Admin Themes', () => {
       .attach('image', VALID_PNG_BUFFER, { filename: 'bg.png', contentType: 'image/png' })
       .field('name', '봄 테마')
       .field('requiredArtworks', '3')
-      .field('buttonColor', '#FF6B6B')
-      .field('buttonTextColor', '#FFFFFF')
-      .field('textColor', '#333333')
       .field('toggleType', 'LIGHT');
 
     expect(res.status).toBe(201);
