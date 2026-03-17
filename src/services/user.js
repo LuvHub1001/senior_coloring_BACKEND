@@ -71,6 +71,15 @@ async function updateProfile(userId, { nickname, statusMessage, avatarUrl }) {
   }
 
   if (avatarUrl !== undefined) {
+    if (avatarUrl !== null) {
+      const isUrl = /^https?:\/\//.test(avatarUrl);
+      const isEmoji = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}]+$/u.test(avatarUrl);
+      if (!isUrl && !isEmoji) {
+        const error = new Error('avatarUrl은 URL 또는 이모지만 허용됩니다.');
+        error.status = 400;
+        throw error;
+      }
+    }
     data.avatarUrl = avatarUrl;
   }
 

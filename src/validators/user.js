@@ -18,7 +18,7 @@ const updateProfile = z.object({
   body: z.object({
     nickname: nicknameSchema.optional(),
     statusMessage: z.string().max(50, '상태 메시지는 50자 이하여야 합니다.').optional(),
-    avatarUrl: z.string().url('올바른 URL 형식이 아닙니다.').nullable().optional(),
+    avatarUrl: z.string().max(255, 'avatarUrl은 255자 이하여야 합니다.').nullable().optional(),
   }),
 });
 
