@@ -81,7 +81,8 @@ model Artwork {
   imageUrl        String?       @map("image_url")
   progress        Int           @default(0)
   status          ArtworkStatus @default(IN_PROGRESS)
-  isPublic        Boolean       @default(false) @map("is_public") // 갤러리 공개 여부
+  isPublic        Boolean       @default(false) @map("is_public") // 커뮤니티 공개 여부
+  shareImageUrl   String?       @map("share_image_url") // 합성된 공유용 이미지 URL
   likeCount       Int           @default(0) @map("like_count") // 좋아요 수 (비정규화)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")

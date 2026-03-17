@@ -123,4 +123,18 @@ async function publish(req, res, next) {
   }
 }
 
-module.exports = { create, save, complete, list, detail, remove, feature, publish };
+// 공유용 이미지 합성
+async function shareImage(req, res, next) {
+  try {
+    const result = await artworkService.generateShareImage({
+      artworkId: req.params.id,
+      userId: req.user.id,
+    });
+
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { create, save, complete, list, detail, remove, feature, publish, shareImage };

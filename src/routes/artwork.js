@@ -4,7 +4,7 @@ const { authenticate } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
 const { uploadLimiter } = require('../middlewares/rateLimiter');
 const { createArtwork, saveArtwork, artworkParams, listArtworks, publishArtwork } = require('../validators/artwork');
-const { create, save, complete, list, detail, remove, feature, publish } = require('../controllers/artwork');
+const { create, save, complete, list, detail, remove, feature, publish, shareImage } = require('../controllers/artwork');
 
 const router = express.Router();
 
@@ -45,6 +45,9 @@ router.patch('/:id/feature', validate(artworkParams), feature);
 
 // 작품 공개/비공개 전환
 router.patch('/:id/publish', validate(publishArtwork), publish);
+
+// 공유용 이미지 합성
+router.get('/:id/share-image', validate(artworkParams), shareImage);
 
 // 작품 삭제
 router.delete('/:id', validate(artworkParams), remove);
