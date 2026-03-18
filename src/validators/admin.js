@@ -108,6 +108,16 @@ const createNotice = z.object({
   }),
 });
 
+const updateNotice = z.object({
+  params: z.object({
+    id: z.string().uuid('올바른 공지 ID 형식이 아닙니다.'),
+  }),
+  body: z.object({
+    title: z.string().min(1, 'title은 필수입니다.').max(100, 'title은 100자 이하여야 합니다.'),
+    content: z.string().min(1, 'content는 필수입니다.').max(2000, 'content는 2000자 이하여야 합니다.'),
+  }),
+});
+
 const deleteNotice = z.object({
   params: z.object({
     id: z.string().uuid('올바른 공지 ID 형식이 아닙니다.'),
@@ -130,5 +140,6 @@ module.exports = {
   createRecommendation,
   deleteRecommendation,
   createNotice,
+  updateNotice,
   deleteNotice,
 };

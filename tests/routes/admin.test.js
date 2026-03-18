@@ -623,6 +623,39 @@ describe('Admin Notices', () => {
 
     expect(res.status).toBe(404);
   });
+
+  test('PUT /api/admin/notices/:id - 공지사항을 수정한다', async () => {
+    mockPrisma.notice.findUnique.mockResolvedValue(mockNotice);
+    mockPrisma.notice.update.mockResolvedValue({ ...mockNotice, title: '수정된 제목', content: '수정된 내용' });
+
+    const res = await request(app)
+      .put(`/api/admin/notices/${mockNotice.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: '수정된 제목', content: '수정된 내용' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  test('PUT /api/admin/notices/:id - 필수 필드 누락 시 400을 반환한다', async () => {
+    const res = await request(app)
+      .put(`/api/admin/notices/${mockNotice.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: '' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('PUT /api/admin/notices/:id - 존재하지 않는 공지이면 404를 반환한다', async () => {
+    mockPrisma.notice.findUnique.mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/admin/notices/c1d2e3f4-a5b6-7890-abcd-ef1234567890')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: '수정 제목', content: '수정 내용' });
+
+    expect(res.status).toBe(404);
+  });
 });
 
 describe('GET /api/notices', () => {

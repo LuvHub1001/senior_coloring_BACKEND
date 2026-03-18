@@ -495,6 +495,19 @@ async function createNotice({ title, content }) {
   });
 }
 
+async function updateNotice(id, { title, content }) {
+  const notice = await prisma.notice.findUnique({ where: { id } });
+  if (!notice) {
+    const error = new Error('공지사항을 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+  await prisma.notice.update({
+    where: { id },
+    data: { title, content },
+  });
+}
+
 async function deleteNotice(id) {
   const notice = await prisma.notice.findUnique({ where: { id } });
   if (!notice) {
@@ -524,5 +537,6 @@ module.exports = {
   deleteRecommendation,
   getNotices,
   createNotice,
+  updateNotice,
   deleteNotice,
 };

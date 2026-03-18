@@ -92,6 +92,7 @@ router.delete('/recommendations/:id', adminWriteLimiter, validate(validators.del
 // 공지사항 관리
 router.get('/notices', adminReadLimiter, controller.listNotices);
 router.post('/notices', adminWriteLimiter, validate(validators.createNotice), controller.createNotice);
+router.put('/notices/:id', adminWriteLimiter, validate(validators.updateNotice), controller.updateNotice);
 router.delete('/notices/:id', adminWriteLimiter, validate(validators.deleteNotice), controller.deleteNotice);
 
 module.exports = router;

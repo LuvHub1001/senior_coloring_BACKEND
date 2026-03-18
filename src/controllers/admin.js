@@ -237,6 +237,17 @@ async function createNotice(req, res, next) {
   }
 }
 
+// 공지사항 수정
+async function updateNotice(req, res, next) {
+  try {
+    const { title, content } = req.body;
+    await adminService.updateNotice(req.params.id, { title, content });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // 공지사항 삭제
 async function deleteNotice(req, res, next) {
   try {
@@ -266,5 +277,6 @@ module.exports = {
   deleteRecommendation,
   listNotices,
   createNotice,
+  updateNotice,
   deleteNotice,
 };
