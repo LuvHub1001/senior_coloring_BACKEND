@@ -224,7 +224,7 @@ async function toggleLike({ artworkId, userId }) {
       }),
     ]);
 
-    popularCache.clear();
+    countCache.invalidate('community');
     return { isLiked: false, likeCount: updated.likeCount };
   }
 
@@ -242,21 +242,17 @@ async function toggleLike({ artworkId, userId }) {
 
   // 본인 작품이 아닌 경우에만 알림 생성
   if (artwork.userId !== userId) {
-    const liker = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { nickname: true },
-    });
     const artworkTitle = artwork.title || artwork.design.title;
     createNotification({
       userId: artwork.userId,
       targetUserId: userId,
       type: 'like',
       title: '좋아요',
-      message: `${liker.nickname}님이 '${artworkTitle}' 작품을 좋아했어요`,
+      message: `'${artworkTitle}' 작품을 좋아했어요`,
     });
   }
 
-  popularCache.clear();
+  countCache.invalidate('community');
   return { isLiked: true, likeCount: updated.likeCount };
 }
 

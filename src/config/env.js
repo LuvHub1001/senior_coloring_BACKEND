@@ -12,6 +12,11 @@ const envSchema = z.object({
     .refine((url) => url.startsWith('postgresql://') || url.startsWith('postgres://'), {
       message: 'DATABASE_URL은 postgresql:// 또는 postgres:// 형식이어야 합니다.',
     }),
+  DIRECT_URL: z.string()
+    .refine((url) => url.startsWith('postgresql://') || url.startsWith('postgres://'), {
+      message: 'DIRECT_URL은 postgresql:// 또는 postgres:// 형식이어야 합니다.',
+    })
+    .optional(),
 
   // JWT
   JWT_SECRET: z.string().min(32, 'JWT_SECRET은 최소 32자 이상이어야 합니다.'),

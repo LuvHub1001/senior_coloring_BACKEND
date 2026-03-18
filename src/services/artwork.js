@@ -1,6 +1,6 @@
 const prisma = require('../config/prisma');
 const { uploadFile, removeFile } = require('../utils/storage');
-const { createNotification } = require('./notification');
+const { createNotification, createNotificationBatch } = require('./notification');
 const BUCKET_NAME = 'artworks';
 
 // 색칠 시작 (항상 새 작품 생성)
@@ -281,22 +281,22 @@ async function publishArtwork({ artworkId, userId, isPublic, title }) {
     select: { id: true, isPublic: true, title: true, publishedAt: true },
   });
 
-  // 공개 전환 시 팔로워에게 알림 생성
+  // 공개 전환 시 팔로워에게 알림 일괄 생성
   if (isPublic) {
-    const [author, followers] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId }, select: { nickname: true } }),
-      prisma.follow.findMany({ where: { followingId: userId }, select: { followerId: true } }),
-    ]);
+    const followers = await prisma.follow.findMany({
+      where: { followingId: userId },
+      select: { followerId: true },
+    });
     const artworkTitle = updated.title || artwork.design?.title || '새 작품';
-    for (const f of followers) {
-      createNotification({
+    createNotificationBatch(
+      followers.map((f) => ({
         userId: f.followerId,
         targetUserId: userId,
         type: 'artwork',
         title: '새 작품',
-        message: `${author.nickname}님이 '${artworkTitle}' 작품을 공개했어요`,
-      });
-    }
+        message: `'${artworkTitle}' 작품을 공개했어요`,
+      })),
+    );
   }
 
   return { artworkId: updated.id, isPublic: updated.isPublic, title: updated.title, publishedAt: updated.publishedAt };

@@ -19,6 +19,8 @@ const SVG_DANGEROUS_PATTERNS = [
   /xlink:href\s*=\s*["'](?!#)/i,  // 외부 참조 (내부 #ref는 허용)
   /href\s*=\s*["']javascript:/i,
   /<use[^>]+href\s*=\s*["'](?!#)/i,
+  /<!\[CDATA\[/i,                  // CDATA 블록 (스크립트 우회 방지)
+  /<!--.*?<script/is,              // HTML 주석 내 스크립트 삽입 방지
 ];
 
 /**

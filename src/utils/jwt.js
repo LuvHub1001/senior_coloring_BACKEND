@@ -94,8 +94,8 @@ async function cleanupExpiredTokens() {
     where: {
       OR: [
         { expiresAt: { lt: new Date() } },
-        // 사용된 토큰은 7일 후 정리 (재사용 감지 기간)
-        { usedAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+        // 사용된 토큰은 1일 후 정리 (재사용 감지는 rotate 직후 발생하므로 1일이면 충분)
+        { usedAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
       ],
     },
   });

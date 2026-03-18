@@ -32,19 +32,21 @@ describe('Notification Routes', () => {
       id: 'n-1',
       type: 'like',
       title: '좋아요',
-      message: '꼬마 화가님이 \'등산\' 작품을 좋아했어요',
+      message: "'등산' 작품을 좋아했어요",
       isRead: false,
       createdAt: new Date().toISOString(),
       targetUserId: 'user-2',
+      targetUser: { nickname: '꼬마 화가', avatarUrl: '🐶' },
     },
     {
       id: 'n-2',
       type: 'follow',
       title: '새 관심 작가',
-      message: '열정판다님이 나를 관심 작가로 등록했어요',
+      message: '나를 관심 작가로 등록했어요',
       isRead: true,
       createdAt: new Date().toISOString(),
       targetUserId: 'user-3',
+      targetUser: { nickname: '열정판다', avatarUrl: '🐱' },
     },
   ];
 
@@ -61,7 +63,7 @@ describe('Notification Routes', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.data.content).toHaveLength(2);
       expect(res.body.data.unreadCount).toBe(1);
-      expect(res.body.data.content[0].targetUserId).toBe('user-2');
+      expect(res.body.data.content[0].targetUser.nickname).toBe('꼬마 화가');
     });
 
     test('type 필터로 조회한다', async () => {

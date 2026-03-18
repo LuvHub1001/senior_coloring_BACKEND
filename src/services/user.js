@@ -73,10 +73,9 @@ async function updateProfile(userId, { nickname, statusMessage, avatarUrl }) {
 
   if (avatarUrl !== undefined) {
     if (avatarUrl !== null) {
-      const isUrl = /^https?:\/\//.test(avatarUrl);
-      const isEmoji = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}]+$/u.test(avatarUrl);
-      if (!isUrl && !isEmoji) {
-        const error = new Error('avatarUrl은 URL 또는 이모지만 허용됩니다.');
+      const isEmoji = avatarUrl.length <= 12 && /^[\p{Emoji_Presentation}\p{Extended_Pictographic}]+$/u.test(avatarUrl);
+      if (!isEmoji) {
+        const error = new Error('avatarUrl은 이모지만 허용됩니다.');
         error.status = 400;
         throw error;
       }
@@ -251,16 +250,12 @@ async function followUser({ followerId, followingId }) {
   ]);
 
   // 팔로우 알림 생성
-  const follower = await prisma.user.findUnique({
-    where: { id: followerId },
-    select: { nickname: true },
-  });
   createNotification({
     userId: followingId,
     targetUserId: followerId,
     type: 'follow',
     title: '새 관심 작가',
-    message: `${follower.nickname}님이 나를 관심 작가로 등록했어요`,
+    message: '나를 관심 작가로 등록했어요',
   });
 
   return { isFollowing: true, followerCount: updated.followerCount };

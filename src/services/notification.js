@@ -1,8 +1,12 @@
 const prisma = require('../config/prisma');
 const logger = require('../config/logger');
 
-// 알림 목록 조회 (최근 30일)
-async function getNotifications({ userId, type }) {
+// 알림 목록 조회 (최근 30일, 페이지네이션)
+async function getNotifications({ userId, type, page = 1, size = 20 }) {
+  page = Number(page) || 1;
+  size = Number(size) || 20;
+  const skip = (page - 1) * size;
+
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -22,8 +26,11 @@ async function getNotifications({ userId, type }) {
         isRead: true,
         createdAt: true,
         targetUserId: true,
+        targetUser: { select: { nickname: true, avatarUrl: true } },
       },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take: size,
     }),
     // unreadCount는 type 필터와 무관하게 전체 읽지 않은 수
     prisma.notification.count({
@@ -74,4 +81,14 @@ async function createNotification({ userId, targetUserId, type, title, message }
   }
 }
 
-module.exports = { getNotifications, readNotification, readAllNotifications, createNotification };
+// 알림 배치 생성 (팔로워 다수에게 동시 발송)
+async function createNotificationBatch(notifications) {
+  try {
+    if (notifications.length === 0) return;
+    await prisma.notification.createMany({ data: notifications });
+  } catch (err) {
+    logger.error('알림 배치 생성 실패', { count: notifications.length, error: err.message });
+  }
+}
+
+module.exports = { getNotifications, readNotification, readAllNotifications, createNotification, createNotificationBatch };

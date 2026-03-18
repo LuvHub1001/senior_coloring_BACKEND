@@ -7,6 +7,17 @@ let intervalHandle = null;
 let morningCheckHandle = null;
 let isRunning = false;
 
+// 타임아웃 부착 Promise (타이머 자동 정리)
+function withTimeout(promise, ms) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('timeout')), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 // 고아 작품 정리: 생성 후 24시간 경과 + imageUrl이 null + IN_PROGRESS
 async function cleanupOrphanArtworks() {
   if (isRunning) return;
@@ -49,9 +60,9 @@ async function cleanupTokens() {
 async function morningHealthCheck() {
   const results = { timestamp: new Date().toISOString(), checks: {} };
 
-  // 1. DB 연결 확인
+  // 1. DB 연결 확인 (5초 타임아웃)
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await withTimeout(prisma.$queryRaw`SELECT 1`, 5000);
     results.checks.database = 'ok';
   } catch (err) {
     results.checks.database = 'fail';

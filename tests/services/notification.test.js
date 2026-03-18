@@ -8,6 +8,7 @@ const mockPrisma = {
     update: jest.fn(),
     updateMany: jest.fn(),
     create: jest.fn(),
+    createMany: jest.fn(),
   },
 };
 
@@ -15,7 +16,7 @@ jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => mockPrisma),
 }));
 
-const { getNotifications, readNotification, readAllNotifications, createNotification } = require('../../src/services/notification');
+const { getNotifications, readNotification, readAllNotifications, createNotification, createNotificationBatch } = require('../../src/services/notification');
 
 beforeEach(() => {
   jest.resetAllMocks();
@@ -25,7 +26,7 @@ describe('Notification Service', () => {
   describe('getNotifications', () => {
     test('알림 목록과 읽지 않은 수를 반환한다', async () => {
       const notifications = [
-        { id: 'n-1', type: 'like', title: '좋아요', message: '메시지', isRead: false, createdAt: new Date(), targetUserId: 'user-2' },
+        { id: 'n-1', type: 'like', title: '좋아요', message: '메시지', isRead: false, createdAt: new Date(), targetUserId: 'user-2', targetUser: { nickname: '테스트', avatarUrl: '🐶' } },
       ];
       mockPrisma.notification.findMany.mockResolvedValue(notifications);
       mockPrisma.notification.count.mockResolvedValue(1);
@@ -33,12 +34,24 @@ describe('Notification Service', () => {
       const result = await getNotifications({ userId: 'user-1', type: null });
 
       expect(result.content).toHaveLength(1);
+      expect(result.content[0].targetUser.nickname).toBe('테스트');
       expect(result.unreadCount).toBe(1);
       // 30일 필터가 적용되었는지 확인
       const whereArg = mockPrisma.notification.findMany.mock.calls[0][0].where;
       expect(whereArg.userId).toBe('user-1');
       expect(whereArg.createdAt).toBeDefined();
       expect(whereArg.createdAt.gte).toBeInstanceOf(Date);
+    });
+
+    test('페이지네이션이 적용된다', async () => {
+      mockPrisma.notification.findMany.mockResolvedValue([]);
+      mockPrisma.notification.count.mockResolvedValue(0);
+
+      await getNotifications({ userId: 'user-1', type: null, page: 2, size: 10 });
+
+      const queryArg = mockPrisma.notification.findMany.mock.calls[0][0];
+      expect(queryArg.skip).toBe(10);
+      expect(queryArg.take).toBe(10);
     });
 
     test('type 필터를 적용한다', async () => {
@@ -148,6 +161,34 @@ describe('Notification Service', () => {
 
       await expect(
         createNotification({ userId: 'user-1', targetUserId: 'user-2', type: 'like', title: '좋아요', message: '테스트' }),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('createNotificationBatch', () => {
+    test('여러 알림을 한 번에 생성한다', async () => {
+      mockPrisma.notification.createMany.mockResolvedValue({ count: 3 });
+
+      const data = [
+        { userId: 'u-1', targetUserId: 'author-1', type: 'artwork', title: '새 작품', message: '작품 공개' },
+        { userId: 'u-2', targetUserId: 'author-1', type: 'artwork', title: '새 작품', message: '작품 공개' },
+        { userId: 'u-3', targetUserId: 'author-1', type: 'artwork', title: '새 작품', message: '작품 공개' },
+      ];
+      await createNotificationBatch(data);
+
+      expect(mockPrisma.notification.createMany).toHaveBeenCalledWith({ data });
+    });
+
+    test('빈 배열이면 DB 호출하지 않는다', async () => {
+      await createNotificationBatch([]);
+      expect(mockPrisma.notification.createMany).not.toHaveBeenCalled();
+    });
+
+    test('실패 시 에러를 던지지 않는다', async () => {
+      mockPrisma.notification.createMany.mockRejectedValue(new Error('DB error'));
+
+      await expect(
+        createNotificationBatch([{ userId: 'u-1', targetUserId: 'u-2', type: 'like', title: 't', message: 'm' }]),
       ).resolves.toBeUndefined();
     });
   });

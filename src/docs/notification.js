@@ -21,6 +21,21 @@
  *           type: string
  *           enum: [like, artwork, follow]
  *         description: "알림 타입 필터 (미전달 시 전체)"
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: 페이지 번호
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 20
+ *         description: 페이지 크기
  *     responses:
  *       200:
  *         description: 알림 목록
@@ -51,7 +66,7 @@
  *                             example: 좋아요
  *                           message:
  *                             type: string
- *                             example: "꼬마화가님이 '등산' 작품을 좋아했어요"
+ *                             example: "'등산' 작품을 좋아했어요"
  *                           isRead:
  *                             type: boolean
  *                           createdAt:
@@ -61,6 +76,17 @@
  *                             type: string
  *                             format: uuid
  *                             description: 알림 관련 대상 사용자 ID
+ *                           targetUser:
+ *                             type: object
+ *                             description: "대상 사용자 정보 (항상 최신 닉네임)"
+ *                             properties:
+ *                               nickname:
+ *                                 type: string
+ *                                 example: 꼬마화가
+ *                               avatarUrl:
+ *                                 type: string
+ *                                 nullable: true
+ *                                 example: "🐶"
  *                     unreadCount:
  *                       type: integer
  *                       description: "전체 읽지 않은 알림 수 (type 필터와 무관)"

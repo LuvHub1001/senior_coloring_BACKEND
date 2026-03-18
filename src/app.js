@@ -73,8 +73,14 @@ app.use('/api', apiLimiter);
 
 // 헬스체크 (DB 연결 상태 포함)
 app.get('/health', async (req, res) => {
+  let timer;
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('DB health check timeout')), 5000);
+      }),
+    ]);
 
     res.json({
       success: true,
@@ -86,6 +92,8 @@ app.get('/health', async (req, res) => {
       error: '서비스 일시적으로 사용 불가',
       data: { status: 'degraded' },
     });
+  } finally {
+    clearTimeout(timer);
   }
 });
 

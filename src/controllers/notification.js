@@ -2,9 +2,12 @@ const { getNotifications, readNotification, readAllNotifications } = require('..
 
 async function list(req, res, next) {
   try {
+    const { type, page, size } = req.query;
     const data = await getNotifications({
       userId: req.user.id,
-      type: req.query.type || null,
+      type: type || null,
+      page,
+      size,
     });
     res.json({ success: true, data });
   } catch (err) {
