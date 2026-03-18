@@ -15,6 +15,12 @@ const mockPrisma = {
     deleteMany: jest.fn(),
     groupBy: jest.fn(),
   },
+  user: {
+    findUnique: jest.fn(),
+  },
+  notification: {
+    create: jest.fn(),
+  },
   $transaction: jest.fn((args) => {
     if (Array.isArray(args)) return Promise.all(args);
     return args(mockPrisma);
@@ -191,10 +197,12 @@ describe('Community Service', () => {
   describe('toggleLike', () => {
     it('좋아요를 추가한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue({
-        id: 'artwork-1', status: 'COMPLETED', isPublic: true,
+        id: 'artwork-1', userId: 'owner-1', title: null, status: 'COMPLETED', isPublic: true,
+        design: { title: '등산' },
         likes: [],
       });
       mockPrisma.$transaction.mockResolvedValueOnce([{}, { likeCount: 6 }]);
+      mockPrisma.user.findUnique.mockResolvedValue({ nickname: '꼬마 화가' });
 
       const result = await toggleLike({
         artworkId: 'artwork-1',
@@ -206,7 +214,8 @@ describe('Community Service', () => {
 
     it('좋아요를 취소한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue({
-        id: 'artwork-1', status: 'COMPLETED', isPublic: true,
+        id: 'artwork-1', userId: 'owner-1', title: null, status: 'COMPLETED', isPublic: true,
+        design: { title: '등산' },
         likes: [{ id: 'like-1' }],
       });
       mockPrisma.$transaction.mockResolvedValueOnce([{}, { likeCount: 4 }]);

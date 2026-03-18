@@ -121,10 +121,12 @@ describe('Community Routes', () => {
 
     it('로그인 상태로 좋아요를 토글한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue({
-        id: 'artwork-1', status: 'COMPLETED', isPublic: true,
+        id: 'artwork-1', userId: 'owner-1', title: null, status: 'COMPLETED', isPublic: true,
+        design: { title: '등산' },
         likes: [],
       });
       mockPrisma.$transaction.mockResolvedValueOnce([{}, { likeCount: 6 }]);
+      mockPrisma.user.findUnique.mockResolvedValue({ nickname: '테스트유저' });
 
       const res = await request(app)
         .post('/api/community/artworks/550e8400-e29b-41d4-a716-446655440000/like')

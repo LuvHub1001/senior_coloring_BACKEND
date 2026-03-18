@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const { MemoryCache } = require('../utils/cache');
+const { createNotification } = require('./notification');
 
 // 인기 작품 캐시 (TTL 5분)
 const popularCache = new MemoryCache(5 * 60 * 1000);
@@ -192,8 +193,11 @@ async function toggleLike({ artworkId, userId }) {
     where: { id: artworkId },
     select: {
       id: true,
+      userId: true,
+      title: true,
       status: true,
       isPublic: true,
+      design: { select: { title: true } },
       likes: {
         where: { userId },
         select: { id: true },
@@ -235,6 +239,22 @@ async function toggleLike({ artworkId, userId }) {
       select: { likeCount: true },
     }),
   ]);
+
+  // 본인 작품이 아닌 경우에만 알림 생성
+  if (artwork.userId !== userId) {
+    const liker = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { nickname: true },
+    });
+    const artworkTitle = artwork.title || artwork.design.title;
+    createNotification({
+      userId: artwork.userId,
+      targetUserId: userId,
+      type: 'like',
+      title: '좋아요',
+      message: `${liker.nickname}님이 '${artworkTitle}' 작품을 좋아했어요`,
+    });
+  }
 
   popularCache.clear();
   return { isLiked: true, likeCount: updated.likeCount };

@@ -50,6 +50,7 @@ model User {
   communityLikes CommunityLike[]
   followers      Follow[]    @relation("Following") // 나를 팔로우하는 사람들
   following      Follow[]    @relation("Follower")  // 내가 팔로우하는 사람들
+  notifications  Notification[]
 
   @@unique([provider, providerId])
   @@map("users")
@@ -188,6 +189,30 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followingId])
   @@map("follows")
+}
+
+// 알림
+model Notification {
+  id           String           @id @default(uuid())
+  userId       String           @map("user_id") // 알림 수신자
+  targetUserId String           @map("target_user_id") // 알림 관련 대상 사용자
+  type         NotificationType
+  title        String
+  message      String
+  isRead       Boolean          @default(false) @map("is_read")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  like
+  artwork
+  follow
 }
 
 enum ArtworkStatus {

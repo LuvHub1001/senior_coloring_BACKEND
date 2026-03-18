@@ -323,3 +323,184 @@
  *       403:
  *         description: 본인의 작품이 아님
  */
+
+/**
+ * @swagger
+ * /api/artworks/{id}/publish:
+ *   patch:
+ *     tags: [Artworks]
+ *     summary: 작품 공개/비공개 전환
+ *     description: "완성된 작품을 커뮤니티에 공개하거나 비공개로 전환. 공개 시 팔로워에게 알림 발송"
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: 작품 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isPublic
+ *             properties:
+ *               isPublic:
+ *                 type: boolean
+ *                 description: "true: 공개, false: 비공개"
+ *               title:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 50
+ *                 description: "작품 제목 (공개 시 선택)"
+ *     responses:
+ *       200:
+ *         description: 전환 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     artworkId:
+ *                       type: string
+ *                       format: uuid
+ *                     isPublic:
+ *                       type: boolean
+ *                     title:
+ *                       type: string
+ *                       nullable: true
+ *                     publishedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *       400:
+ *         description: 완성된 작품만 공개 가능
+ *       401:
+ *         description: 인증 실패
+ *       403:
+ *         description: 본인의 작품이 아님
+ *       404:
+ *         description: 작품을 찾을 수 없음
+ */
+
+/**
+ * @swagger
+ * /api/artworks/published:
+ *   get:
+ *     tags: [Artworks]
+ *     summary: 내가 자랑한 작품 목록
+ *     description: 로그인한 사용자가 공개한 작품 목록 (페이지네이션)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [recent, popular]
+ *           default: recent
+ *         description: 정렬 기준
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 50
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: 자랑한 작품 목록
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     content:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           artworkId:
+ *                             type: string
+ *                             format: uuid
+ *                           title:
+ *                             type: string
+ *                           imageUrl:
+ *                             type: string
+ *                           likeCount:
+ *                             type: integer
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                     page:
+ *                       type: integer
+ *                     size:
+ *                       type: integer
+ *                     totalElements:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     last:
+ *                       type: boolean
+ *       401:
+ *         description: 인증 실패
+ */
+
+/**
+ * @swagger
+ * /api/artworks/published/stats:
+ *   get:
+ *     tags: [Artworks]
+ *     summary: 자랑한 작품 통계
+ *     description: 공개한 작품 수, 받은 총 좋아요 수 등 통계
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 통계 데이터
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     publishedCount:
+ *                       type: integer
+ *                       description: 공개한 작품 수
+ *                     totalLikesReceived:
+ *                       type: integer
+ *                       description: 받은 총 좋아요 수
+ *                     followerCount:
+ *                       type: integer
+ *                       description: 나를 관심 작가로 등록한 사용자 수
+ *       401:
+ *         description: 인증 실패
+ */

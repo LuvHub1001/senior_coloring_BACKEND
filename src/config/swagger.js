@@ -111,6 +111,28 @@ const options = {
             createdAt: { type: 'string', format: 'date-time' },
           },
         },
+        Notification: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            type: { type: 'string', enum: ['like', 'artwork', 'follow'] },
+            title: { type: 'string' },
+            message: { type: 'string' },
+            isRead: { type: 'boolean' },
+            createdAt: { type: 'string', format: 'date-time' },
+            targetUserId: { type: 'string', format: 'uuid', description: '알림 관련 대상 사용자 ID' },
+          },
+        },
+        Notice: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            title: { type: 'string' },
+            content: { type: 'string' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
       },
     },
   },

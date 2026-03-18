@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { createNotification } = require('./notification');
 
 // getUserProfile의 select 정의 (공유)
 const USER_PROFILE_SELECT = {
@@ -248,6 +249,19 @@ async function followUser({ followerId, followingId }) {
       select: { followerCount: true },
     }),
   ]);
+
+  // 팔로우 알림 생성
+  const follower = await prisma.user.findUnique({
+    where: { id: followerId },
+    select: { nickname: true },
+  });
+  createNotification({
+    userId: followingId,
+    targetUserId: followerId,
+    type: 'follow',
+    title: '새 관심 작가',
+    message: `${follower.nickname}님이 나를 관심 작가로 등록했어요`,
+  });
 
   return { isFollowing: true, followerCount: updated.followerCount };
 }

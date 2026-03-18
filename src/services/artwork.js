@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const { uploadFile, removeFile } = require('../utils/storage');
+const { createNotification } = require('./notification');
 const BUCKET_NAME = 'artworks';
 
 // 색칠 시작 (항상 새 작품 생성)
@@ -262,7 +263,7 @@ async function featureArtwork({ artworkId, userId }) {
 
 // 작품 공개/비공개 전환
 async function publishArtwork({ artworkId, userId, isPublic, title }) {
-  const artwork = await getOwnArtwork(artworkId, userId, { includeDesign: false });
+  const artwork = await getOwnArtwork(artworkId, userId);
 
   if (artwork.status !== 'COMPLETED') {
     const error = new Error('완성된 작품만 갤러리에 공개할 수 있습니다.');
@@ -279,6 +280,24 @@ async function publishArtwork({ artworkId, userId, isPublic, title }) {
     data,
     select: { id: true, isPublic: true, title: true, publishedAt: true },
   });
+
+  // 공개 전환 시 팔로워에게 알림 생성
+  if (isPublic) {
+    const [author, followers] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { nickname: true } }),
+      prisma.follow.findMany({ where: { followingId: userId }, select: { followerId: true } }),
+    ]);
+    const artworkTitle = updated.title || artwork.design?.title || '새 작품';
+    for (const f of followers) {
+      createNotification({
+        userId: f.followerId,
+        targetUserId: userId,
+        type: 'artwork',
+        title: '새 작품',
+        message: `${author.nickname}님이 '${artworkTitle}' 작품을 공개했어요`,
+      });
+    }
+  }
 
   return { artworkId: updated.id, isPublic: updated.isPublic, title: updated.title, publishedAt: updated.publishedAt };
 }
@@ -340,15 +359,22 @@ async function getPublishedArtworks({ userId, sort, page, size }) {
 
 // 프로필 통계 (자랑한 작품 수, 받은 좋아요 합산)
 async function getPublishedStats(userId) {
-  const result = await prisma.artwork.aggregate({
-    where: { userId, status: 'COMPLETED', isPublic: true },
-    _count: { id: true },
-    _sum: { likeCount: true },
-  });
+  const [result, user] = await Promise.all([
+    prisma.artwork.aggregate({
+      where: { userId, status: 'COMPLETED', isPublic: true },
+      _count: { id: true },
+      _sum: { likeCount: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { followerCount: true },
+    }),
+  ]);
 
   return {
     publishedCount: result._count.id,
     totalLikesReceived: result._sum.likeCount || 0,
+    followerCount: user?.followerCount || 0,
   };
 }
 

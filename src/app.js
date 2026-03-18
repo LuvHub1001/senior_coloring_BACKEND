@@ -19,6 +19,7 @@ const communityRouter = require('./routes/community');
 const homeRouter = require('./routes/home');
 const adminRouter = require('./routes/admin');
 const noticeRouter = require('./routes/notice');
+const notificationRouter = require('./routes/notification');
 const prisma = require('./config/prisma');
 const { allowedOrigins } = require('./config/cors');
 
@@ -111,6 +112,7 @@ app.use('/api/community', communityRouter);
 app.use('/api/home', homeRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/notices', noticeRouter);
+app.use('/api/notifications', notificationRouter);
 
 // 에러 핸들링
 app.use(errorHandler);

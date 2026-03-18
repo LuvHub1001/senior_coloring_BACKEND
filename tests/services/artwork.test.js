@@ -540,11 +540,12 @@ describe('Artwork Service', () => {
   });
 
   describe('getPublishedStats', () => {
-    test('자랑한 작품 수와 받은 좋아요 합산을 반환한다', async () => {
+    test('자랑한 작품 수, 받은 좋아요 합산, 팔로워 수를 반환한다', async () => {
       mockPrisma.artwork.aggregate = jest.fn().mockResolvedValue({
         _count: { id: 3 },
         _sum: { likeCount: 47 },
       });
+      mockPrisma.user.findUnique.mockResolvedValue({ followerCount: 12 });
 
       const result = await artworkService.getPublishedStats('user-1');
 
@@ -556,6 +557,7 @@ describe('Artwork Service', () => {
       expect(result).toEqual({
         publishedCount: 3,
         totalLikesReceived: 47,
+        followerCount: 12,
       });
     });
 
@@ -564,12 +566,14 @@ describe('Artwork Service', () => {
         _count: { id: 0 },
         _sum: { likeCount: null },
       });
+      mockPrisma.user.findUnique.mockResolvedValue({ followerCount: 0 });
 
       const result = await artworkService.getPublishedStats('user-1');
 
       expect(result).toEqual({
         publishedCount: 0,
         totalLikesReceived: 0,
+        followerCount: 0,
       });
     });
   });
