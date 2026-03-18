@@ -2,14 +2,17 @@ require('../setup');
 
 // Prisma mock
 const mockPrisma = {
-  user: { findUnique: jest.fn(), update: jest.fn() },
+  user: { findUnique: jest.fn(), update: jest.fn(), findFirst: jest.fn() },
+  artwork: { aggregate: jest.fn() },
+  follow: { findUnique: jest.fn(), create: jest.fn(), delete: jest.fn() },
+  $transaction: jest.fn(),
 };
 
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => mockPrisma),
 }));
 
-const { getUserProfile, updateNickname } = require('../../src/services/user');
+const { getUserProfile, updateNickname, getPublicProfile, followUser, unfollowUser } = require('../../src/services/user');
 
 const mockUser = {
   id: 'user-1',
@@ -23,7 +26,7 @@ const mockUser = {
 };
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
 });
 
 describe('User Service', () => {
@@ -105,6 +108,125 @@ describe('User Service', () => {
         message: '사용자를 찾을 수 없습니다.',
         status: 404,
       });
+    });
+  });
+
+  describe('getPublicProfile', () => {
+    test('타인 프로필을 통계와 함께 반환한다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-2',
+        nickname: '열정판다',
+        avatarUrl: '🐶',
+        statusMessage: '안녕하세요',
+        followerCount: 10,
+        followers: [],
+      });
+      mockPrisma.artwork.aggregate.mockResolvedValue({
+        _count: { id: 4 },
+        _sum: { likeCount: 123 },
+      });
+
+      const result = await getPublicProfile({ targetUserId: 'user-2', currentUserId: 'user-1' });
+
+      expect(result.id).toBe('user-2');
+      expect(result.nickname).toBe('열정판다');
+      expect(result.publishedCount).toBe(4);
+      expect(result.totalLikesReceived).toBe(123);
+      expect(result.followerCount).toBe(10);
+      expect(result.isFollowing).toBe(false);
+    });
+
+    test('팔로우 중이면 isFollowing이 true이다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-2',
+        nickname: '열정판다',
+        avatarUrl: '🐶',
+        statusMessage: null,
+        followerCount: 10,
+        followers: [{ id: 'follow-1' }],
+      });
+      mockPrisma.artwork.aggregate.mockResolvedValue({
+        _count: { id: 0 },
+        _sum: { likeCount: null },
+      });
+
+      const result = await getPublicProfile({ targetUserId: 'user-2', currentUserId: 'user-1' });
+
+      expect(result.isFollowing).toBe(true);
+    });
+
+    test('존재하지 않는 유저이면 404 에러를 던진다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        getPublicProfile({ targetUserId: 'nonexistent', currentUserId: null }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+  });
+
+  describe('followUser', () => {
+    test('팔로우를 생성하고 팔로워 수를 반환한다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-2' });
+      mockPrisma.follow.findUnique.mockResolvedValue(null);
+      mockPrisma.$transaction.mockResolvedValue([
+        { id: 'follow-1' },
+        { followerCount: 11 },
+      ]);
+
+      const result = await followUser({ followerId: 'user-1', followingId: 'user-2' });
+
+      expect(result).toEqual({ isFollowing: true, followerCount: 11 });
+    });
+
+    test('자기 자신을 팔로우하면 400 에러를 던진다', async () => {
+      await expect(
+        followUser({ followerId: 'user-1', followingId: 'user-1' }),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+
+    test('이미 팔로우 중이면 409 에러를 던진다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-2' });
+      mockPrisma.follow.findUnique.mockResolvedValue({ id: 'follow-1' });
+
+      await expect(
+        followUser({ followerId: 'user-1', followingId: 'user-2' }),
+      ).rejects.toMatchObject({ status: 409 });
+    });
+
+    test('존재하지 않는 유저를 팔로우하면 404 에러를 던진다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        followUser({ followerId: 'user-1', followingId: 'nonexistent' }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+  });
+
+  describe('unfollowUser', () => {
+    test('팔로우를 삭제하고 팔로워 수를 반환한다', async () => {
+      mockPrisma.follow.findUnique.mockResolvedValue({ id: 'follow-1' });
+      mockPrisma.$transaction.mockResolvedValue([
+        { id: 'follow-1' },
+        { followerCount: 9 },
+      ]);
+
+      const result = await unfollowUser({ followerId: 'user-1', followingId: 'user-2' });
+
+      expect(result).toEqual({ isFollowing: false, followerCount: 9 });
+    });
+
+    test('자기 자신을 언팔로우하면 400 에러를 던진다', async () => {
+      await expect(
+        unfollowUser({ followerId: 'user-1', followingId: 'user-1' }),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+
+    test('팔로우하지 않은 유저를 언팔로우하면 404 에러를 던진다', async () => {
+      mockPrisma.follow.findUnique.mockResolvedValue(null);
+
+      await expect(
+        unfollowUser({ followerId: 'user-1', followingId: 'user-2' }),
+      ).rejects.toMatchObject({ status: 404 });
     });
   });
 });

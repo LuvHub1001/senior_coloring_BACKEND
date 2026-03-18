@@ -8,8 +8,8 @@ const countCache = new MemoryCache(60 * 1000);
 
 // 커뮤니티 작품 목록 조회 (공개된 완성 작품만)
 async function getCommunityArtworks({ sort, page, size, userId }) {
-  page = Number(page);
-  size = Number(size);
+  page = Number(page) || 1;
+  size = Number(size) || 20;
   const skip = (page - 1) * size;
   const where = { status: 'COMPLETED', isPublic: true, imageUrl: { not: null } };
 

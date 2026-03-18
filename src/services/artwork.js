@@ -285,8 +285,8 @@ async function publishArtwork({ artworkId, userId, isPublic, title }) {
 
 // 자랑한 작품 목록 조회 (본인이 공개한 작품)
 async function getPublishedArtworks({ userId, sort, page, size }) {
-  page = Number(page);
-  size = Number(size);
+  page = Number(page) || 1;
+  size = Number(size) || 20;
   const skip = (page - 1) * size;
 
   const where = { userId, status: 'COMPLETED', isPublic: true };

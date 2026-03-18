@@ -131,4 +131,110 @@ describe('User Routes', () => {
       expect(res.status).toBe(400);
     });
   });
+
+  describe('GET /api/users/:userId/profile', () => {
+    test('타인 프로필을 반환한다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        nickname: '열정판다',
+        avatarUrl: '🐶',
+        statusMessage: '안녕하세요',
+        followerCount: 10,
+        followers: [],
+      });
+      mockPrisma.artwork.aggregate = jest.fn().mockResolvedValue({
+        _count: { id: 4 },
+        _sum: { likeCount: 123 },
+      });
+
+      const res = await request(app)
+        .get('/api/users/550e8400-e29b-41d4-a716-446655440000/profile')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.nickname).toBe('열정판다');
+      expect(res.body.data.publishedCount).toBe(4);
+      expect(res.body.data.totalLikesReceived).toBe(123);
+      expect(res.body.data.followerCount).toBe(10);
+      expect(res.body.data.isFollowing).toBe(false);
+    });
+
+    test('비로그인으로도 조회 가능하다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        nickname: '열정판다',
+        avatarUrl: '🐶',
+        statusMessage: null,
+        followerCount: 0,
+      });
+      mockPrisma.artwork.aggregate = jest.fn().mockResolvedValue({
+        _count: { id: 0 },
+        _sum: { likeCount: null },
+      });
+
+      const res = await request(app)
+        .get('/api/users/550e8400-e29b-41d4-a716-446655440000/profile');
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isFollowing).toBe(false);
+    });
+
+    test('잘못된 userId이면 400을 반환한다', async () => {
+      const res = await request(app)
+        .get('/api/users/not-a-uuid/profile');
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/users/:userId/follow', () => {
+    test('팔로우를 생성한다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: '550e8400-e29b-41d4-a716-446655440000' });
+      mockPrisma.follow.findUnique.mockResolvedValue(null);
+      mockPrisma.$transaction.mockResolvedValue([
+        { id: 'follow-1' },
+        { followerCount: 11 },
+      ]);
+
+      const res = await request(app)
+        .post('/api/users/550e8400-e29b-41d4-a716-446655440000/follow')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isFollowing).toBe(true);
+      expect(res.body.data.followerCount).toBe(11);
+    });
+
+    test('인증 없이 팔로우하면 401을 반환한다', async () => {
+      const res = await request(app)
+        .post('/api/users/550e8400-e29b-41d4-a716-446655440000/follow');
+
+      expect(res.status).toBe(401);
+    });
+  });
+
+  describe('DELETE /api/users/:userId/follow', () => {
+    test('언팔로우를 처리한다', async () => {
+      mockPrisma.follow.findUnique.mockResolvedValue({ id: 'follow-1' });
+      mockPrisma.$transaction.mockResolvedValue([
+        { id: 'follow-1' },
+        { followerCount: 9 },
+      ]);
+
+      const res = await request(app)
+        .delete('/api/users/550e8400-e29b-41d4-a716-446655440000/follow')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.isFollowing).toBe(false);
+      expect(res.body.data.followerCount).toBe(9);
+    });
+
+    test('인증 없이 언팔로우하면 401을 반환한다', async () => {
+      const res = await request(app)
+        .delete('/api/users/550e8400-e29b-41d4-a716-446655440000/follow');
+
+      expect(res.status).toBe(401);
+    });
+  });
 });

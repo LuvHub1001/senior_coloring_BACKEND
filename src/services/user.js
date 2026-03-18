@@ -99,4 +99,194 @@ async function updateProfile(userId, { nickname, statusMessage, avatarUrl }) {
   }
 }
 
-module.exports = { getUserProfile, updateNickname, updateProfile };
+// 타인 프로필 조회
+async function getPublicProfile({ targetUserId, currentUserId }) {
+  const user = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: {
+      id: true,
+      nickname: true,
+      avatarUrl: true,
+      statusMessage: true,
+      followerCount: true,
+      ...(currentUserId && {
+        followers: {
+          where: { followerId: currentUserId },
+          select: { id: true },
+        },
+      }),
+    },
+  });
+
+  if (!user) {
+    const error = new Error('사용자를 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  // 게시 통계
+  const stats = await prisma.artwork.aggregate({
+    where: { userId: targetUserId, status: 'COMPLETED', isPublic: true },
+    _count: { id: true },
+    _sum: { likeCount: true },
+  });
+
+  return {
+    id: user.id,
+    nickname: user.nickname,
+    avatarUrl: user.avatarUrl,
+    statusMessage: user.statusMessage,
+    publishedCount: stats._count.id,
+    totalLikesReceived: stats._sum.likeCount || 0,
+    followerCount: user.followerCount,
+    isFollowing: currentUserId ? user.followers?.length > 0 : false,
+  };
+}
+
+// 타인의 자랑한 작품 목록
+async function getUserPublishedArtworks({ targetUserId, currentUserId, sort, page, size }) {
+  page = Number(page) || 1;
+  size = Number(size) || 20;
+  const skip = (page - 1) * size;
+
+  // 대상 유저 존재 확인
+  const userExists = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true },
+  });
+  if (!userExists) {
+    const error = new Error('사용자를 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  const where = { userId: targetUserId, status: 'COMPLETED', isPublic: true };
+
+  const orderBy =
+    sort === 'popular'
+      ? [{ likeCount: 'desc' }, { publishedAt: 'desc' }]
+      : [{ publishedAt: 'desc' }];
+
+  const [artworks, totalCount] = await Promise.all([
+    prisma.artwork.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        imageUrl: true,
+        likeCount: true,
+        createdAt: true,
+        publishedAt: true,
+        design: { select: { title: true } },
+        ...(currentUserId && {
+          likes: {
+            where: { userId: currentUserId },
+            select: { id: true },
+          },
+        }),
+      },
+      orderBy,
+      skip,
+      take: size,
+    }),
+    prisma.artwork.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / size);
+
+  return {
+    content: artworks.map((a) => ({
+      artworkId: a.id,
+      title: a.title || a.design.title,
+      imageUrl: a.imageUrl,
+      likeCount: a.likeCount,
+      isLiked: currentUserId ? a.likes?.length > 0 : false,
+      createdAt: a.createdAt,
+      publishedAt: a.publishedAt,
+    })),
+    page,
+    size,
+    totalElements: totalCount,
+    last: page >= totalPages,
+  };
+}
+
+// 팔로우
+async function followUser({ followerId, followingId }) {
+  if (followerId === followingId) {
+    const error = new Error('자기 자신을 팔로우할 수 없습니다.');
+    error.status = 400;
+    throw error;
+  }
+
+  // 대상 유저 존재 확인
+  const targetUser = await prisma.user.findUnique({
+    where: { id: followingId },
+    select: { id: true },
+  });
+  if (!targetUser) {
+    const error = new Error('사용자를 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  // 이미 팔로우 중인지 확인
+  const existing = await prisma.follow.findUnique({
+    where: { followerId_followingId: { followerId, followingId } },
+  });
+  if (existing) {
+    const error = new Error('이미 팔로우한 사용자입니다.');
+    error.status = 409;
+    throw error;
+  }
+
+  const [, updated] = await prisma.$transaction([
+    prisma.follow.create({ data: { followerId, followingId } }),
+    prisma.user.update({
+      where: { id: followingId },
+      data: { followerCount: { increment: 1 } },
+      select: { followerCount: true },
+    }),
+  ]);
+
+  return { isFollowing: true, followerCount: updated.followerCount };
+}
+
+// 언팔로우
+async function unfollowUser({ followerId, followingId }) {
+  if (followerId === followingId) {
+    const error = new Error('자기 자신을 언팔로우할 수 없습니다.');
+    error.status = 400;
+    throw error;
+  }
+
+  const existing = await prisma.follow.findUnique({
+    where: { followerId_followingId: { followerId, followingId } },
+  });
+  if (!existing) {
+    const error = new Error('팔로우하지 않은 사용자입니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  const [, updated] = await prisma.$transaction([
+    prisma.follow.delete({ where: { id: existing.id } }),
+    prisma.user.update({
+      where: { id: followingId },
+      data: { followerCount: { decrement: 1 } },
+      select: { followerCount: true },
+    }),
+  ]);
+
+  return { isFollowing: false, followerCount: updated.followerCount };
+}
+
+module.exports = {
+  getUserProfile,
+  updateNickname,
+  updateProfile,
+  getPublicProfile,
+  getUserPublishedArtworks,
+  followUser,
+  unfollowUser,
+};

@@ -38,6 +38,7 @@ model User {
   selectedThemeId   Int?     @map("selected_theme_id")
   featuredArtworkId   String?  @unique @map("featured_artwork_id")
   totalCompletedCount Int      @default(0) @map("total_completed_count") // 누적 완성 작품 수 (삭제해도 감소하지 않음)
+  followerCount       Int      @default(0) @map("follower_count") // 팔로워 수 (비정규화)
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
@@ -47,6 +48,8 @@ model User {
   exhibitions    Exhibition[]
   refreshTokens  RefreshToken[]
   communityLikes CommunityLike[]
+  followers      Follow[]    @relation("Following") // 나를 팔로우하는 사람들
+  following      Follow[]    @relation("Follower")  // 내가 팔로우하는 사람들
 
   @@unique([provider, providerId])
   @@map("users")
@@ -170,6 +173,21 @@ model Recommendation {
   design Design @relation(fields: [designId], references: [id])
 
   @@map("recommendations")
+}
+
+// 팔로우 (작가 소식 받기)
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String   @map("follower_id")  // 팔로우 하는 사람
+  followingId String   @map("following_id") // 팔로우 당하는 사람
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
 }
 
 enum ArtworkStatus {

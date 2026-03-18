@@ -22,4 +22,21 @@ const updateProfile = z.object({
   }),
 });
 
-module.exports = { updateNickname, updateProfile };
+const userIdParams = z.object({
+  params: z.object({
+    userId: z.string().uuid('유효한 사용자 ID가 아닙니다.'),
+  }),
+});
+
+const listUserPublishedArtworks = z.object({
+  params: z.object({
+    userId: z.string().uuid('유효한 사용자 ID가 아닙니다.'),
+  }),
+  query: z.object({
+    sort: z.enum(['recent', 'popular']).default('recent'),
+    page: z.coerce.number().int().min(1).default(1),
+    size: z.coerce.number().int().min(1).max(50).default(20),
+  }),
+});
+
+module.exports = { updateNickname, updateProfile, userIdParams, listUserPublishedArtworks };

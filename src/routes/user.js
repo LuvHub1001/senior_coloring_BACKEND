@@ -1,8 +1,8 @@
 const express = require('express');
-const { authenticate } = require('../middlewares/auth');
+const { authenticate, optionalAuth } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
-const { updateNickname, updateProfile } = require('../validators/user');
-const { getMe, patchNickname, patchProfile } = require('../controllers/user');
+const { updateNickname, updateProfile, userIdParams, listUserPublishedArtworks } = require('../validators/user');
+const { getMe, patchNickname, patchProfile, getUserProfilePublic, getUserPublished, follow, unfollow } = require('../controllers/user');
 
 const router = express.Router();
 
@@ -14,5 +14,17 @@ router.patch('/me/profile', authenticate, validate(updateProfile), patchProfile)
 
 // 닉네임 변경 (하위호환)
 router.patch('/me/nickname', authenticate, validate(updateNickname), patchNickname);
+
+// 타인 프로필 조회 (비로그인 허용)
+router.get('/:userId/profile', optionalAuth, validate(userIdParams), getUserProfilePublic);
+
+// 타인의 자랑한 작품 목록 (비로그인 허용)
+router.get('/:userId/artworks/published', optionalAuth, validate(listUserPublishedArtworks), getUserPublished);
+
+// 팔로우 (로그인 필수)
+router.post('/:userId/follow', authenticate, validate(userIdParams), follow);
+
+// 언팔로우 (로그인 필수)
+router.delete('/:userId/follow', authenticate, validate(userIdParams), unfollow);
 
 module.exports = router;
