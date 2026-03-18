@@ -76,6 +76,42 @@
 
 /**
  * @swagger
+ * /api/notifications/{notificationId}/read:
+ *   put:
+ *     tags: [Notifications]
+ *     summary: 개별 알림 읽기
+ *     description: 특정 알림을 읽음 처리. 이미 읽은 알림이면 무시. 본인 알림만 처리 가능
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: notificationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: 알림 ID
+ *     responses:
+ *       200:
+ *         description: 읽음 처리 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: 잘못된 알림 ID 형식
+ *       401:
+ *         description: 인증 실패
+ *       404:
+ *         description: 알림을 찾을 수 없음 (존재하지 않거나 본인 알림이 아님)
+ */
+
+/**
+ * @swagger
  * /api/notifications/read-all:
  *   put:
  *     tags: [Notifications]

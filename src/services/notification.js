@@ -34,6 +34,27 @@ async function getNotifications({ userId, type }) {
   return { content: notifications, unreadCount };
 }
 
+// 개별 읽기
+async function readNotification({ notificationId, userId }) {
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+    select: { userId: true, isRead: true },
+  });
+
+  if (!notification || notification.userId !== userId) {
+    const error = new Error('알림을 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  if (!notification.isRead) {
+    await prisma.notification.update({
+      where: { id: notificationId },
+      data: { isRead: true },
+    });
+  }
+}
+
 // 모두 읽기
 async function readAllNotifications({ userId }) {
   await prisma.notification.updateMany({
@@ -53,4 +74,4 @@ async function createNotification({ userId, targetUserId, type, title, message }
   }
 }
 
-module.exports = { getNotifications, readAllNotifications, createNotification };
+module.exports = { getNotifications, readNotification, readAllNotifications, createNotification };

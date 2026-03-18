@@ -91,6 +91,43 @@ describe('Notification Routes', () => {
     });
   });
 
+  describe('PUT /api/notifications/:notificationId/read', () => {
+    test('개별 알림을 읽음 처리한다', async () => {
+      mockPrisma.notification.findUnique.mockResolvedValue({ userId, isRead: false });
+      mockPrisma.notification.update.mockResolvedValue({});
+
+      const res = await request(app)
+        .put('/api/notifications/550e8400-e29b-41d4-a716-446655440000/read')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    test('존재하지 않는 알림이면 404를 반환한다', async () => {
+      mockPrisma.notification.findUnique.mockResolvedValue(null);
+
+      const res = await request(app)
+        .put('/api/notifications/550e8400-e29b-41d4-a716-446655440000/read')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(404);
+    });
+
+    test('잘못된 UUID이면 400을 반환한다', async () => {
+      const res = await request(app)
+        .put('/api/notifications/invalid-id/read')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+    });
+
+    test('인증 없이 요청하면 401을 반환한다', async () => {
+      const res = await request(app).put('/api/notifications/n-1/read');
+      expect(res.status).toBe(401);
+    });
+  });
+
   describe('PUT /api/notifications/read-all', () => {
     test('모든 알림을 읽음 처리한다', async () => {
       mockPrisma.notification.updateMany.mockResolvedValue({ count: 3 });

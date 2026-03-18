@@ -1,4 +1,4 @@
-const { getNotifications, readAllNotifications } = require('../services/notification');
+const { getNotifications, readNotification, readAllNotifications } = require('../services/notification');
 
 async function list(req, res, next) {
   try {
@@ -7,6 +7,18 @@ async function list(req, res, next) {
       type: req.query.type || null,
     });
     res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function read(req, res, next) {
+  try {
+    await readNotification({
+      notificationId: req.params.notificationId,
+      userId: req.user.id,
+    });
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }
@@ -21,4 +33,4 @@ async function readAll(req, res, next) {
   }
 }
 
-module.exports = { list, readAll };
+module.exports = { list, read, readAll };

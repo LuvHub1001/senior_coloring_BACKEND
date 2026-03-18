@@ -2,8 +2,10 @@ require('../setup');
 
 const mockPrisma = {
   notification: {
+    findUnique: jest.fn(),
     findMany: jest.fn(),
     count: jest.fn(),
+    update: jest.fn(),
     updateMany: jest.fn(),
     create: jest.fn(),
   },
@@ -13,7 +15,7 @@ jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => mockPrisma),
 }));
 
-const { getNotifications, readAllNotifications, createNotification } = require('../../src/services/notification');
+const { getNotifications, readNotification, readAllNotifications, createNotification } = require('../../src/services/notification');
 
 beforeEach(() => {
   jest.resetAllMocks();
@@ -70,6 +72,44 @@ describe('Notification Service', () => {
       const countWhere = mockPrisma.notification.count.mock.calls[0][0].where;
       expect(countWhere.type).toBeUndefined();
       expect(countWhere.isRead).toBe(false);
+    });
+  });
+
+  describe('readNotification', () => {
+    test('읽지 않은 알림을 읽음 처리한다', async () => {
+      mockPrisma.notification.findUnique.mockResolvedValue({ userId: 'user-1', isRead: false });
+      mockPrisma.notification.update.mockResolvedValue({});
+
+      await readNotification({ notificationId: 'n-1', userId: 'user-1' });
+
+      expect(mockPrisma.notification.update).toHaveBeenCalledWith({
+        where: { id: 'n-1' },
+        data: { isRead: true },
+      });
+    });
+
+    test('이미 읽은 알림은 update를 호출하지 않는다', async () => {
+      mockPrisma.notification.findUnique.mockResolvedValue({ userId: 'user-1', isRead: true });
+
+      await readNotification({ notificationId: 'n-1', userId: 'user-1' });
+
+      expect(mockPrisma.notification.update).not.toHaveBeenCalled();
+    });
+
+    test('존재하지 않는 알림이면 404 에러를 던진다', async () => {
+      mockPrisma.notification.findUnique.mockResolvedValue(null);
+
+      await expect(
+        readNotification({ notificationId: 'n-999', userId: 'user-1' }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    test('타인의 알림이면 404 에러를 던진다', async () => {
+      mockPrisma.notification.findUnique.mockResolvedValue({ userId: 'user-2', isRead: false });
+
+      await expect(
+        readNotification({ notificationId: 'n-1', userId: 'user-1' }),
+      ).rejects.toMatchObject({ status: 404 });
     });
   });
 
