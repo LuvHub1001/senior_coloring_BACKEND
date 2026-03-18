@@ -3,8 +3,8 @@ const multer = require('multer');
 const { authenticate } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
 const { uploadLimiter } = require('../middlewares/rateLimiter');
-const { createArtwork, saveArtwork, artworkParams, listArtworks, publishArtwork } = require('../validators/artwork');
-const { create, save, complete, list, detail, remove, feature, publish } = require('../controllers/artwork');
+const { createArtwork, saveArtwork, artworkParams, listArtworks, publishArtwork, listPublishedArtworks } = require('../validators/artwork');
+const { create, save, complete, list, detail, remove, feature, publish, published, publishedStats } = require('../controllers/artwork');
 
 const router = express.Router();
 
@@ -30,6 +30,12 @@ router.post('/', validate(createArtwork), create);
 
 // 내 작품 목록 조회
 router.get('/', validate(listArtworks), list);
+
+// 자랑한 작품 목록 조회
+router.get('/published', validate(listPublishedArtworks), published);
+
+// 자랑한 작품 통계
+router.get('/published/stats', publishedStats);
 
 // 작품 상세 조회
 router.get('/:id', validate(artworkParams), detail);

@@ -14,11 +14,9 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile._json?.kakao_account?.email || null;
-        const avatarUrl = profile._json?.properties?.profile_image || null;
 
         const user = await findOrCreateUser({
           email,
-          avatarUrl,
           provider: 'kakao',
           providerId: String(profile.id),
         });
@@ -43,11 +41,9 @@ if (process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET) {
       async (accessToken, refreshToken, profile, done) => {
         try {
           const email = profile.email || null;
-          const avatarUrl = profile.profileImage || null;
 
           const user = await findOrCreateUser({
             email,
-            avatarUrl,
             provider: 'naver',
             providerId: String(profile.id),
           });
@@ -61,8 +57,10 @@ if (process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET) {
   );
 }
 
+const DEFAULT_AVATAR = '🐶';
+
 // provider + providerId로 사용자 식별
-async function findOrCreateUser({ email, avatarUrl, provider, providerId }) {
+async function findOrCreateUser({ email, provider, providerId }) {
   let user = await prisma.user.findUnique({
     where: {
       provider_providerId: { provider, providerId },
@@ -71,7 +69,7 @@ async function findOrCreateUser({ email, avatarUrl, provider, providerId }) {
 
   if (!user) {
     user = await prisma.user.create({
-      data: { email, nickname: '', avatarUrl, provider, providerId },
+      data: { email, nickname: '', avatarUrl: DEFAULT_AVATAR, provider, providerId },
     });
     return { ...user, isNew: true };
   }

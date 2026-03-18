@@ -38,4 +38,12 @@ const publishArtwork = z.object({
   }),
 });
 
-module.exports = { createArtwork, saveArtwork, artworkParams, listArtworks, publishArtwork };
+const listPublishedArtworks = z.object({
+  query: z.object({
+    sort: z.enum(['recent', 'popular']).default('recent'),
+    page: z.coerce.number().int().min(1).default(1),
+    size: z.coerce.number().int().min(1).max(50).default(20),
+  }),
+});
+
+module.exports = { createArtwork, saveArtwork, artworkParams, listArtworks, publishArtwork, listPublishedArtworks };

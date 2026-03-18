@@ -124,4 +124,31 @@ async function publish(req, res, next) {
   }
 }
 
-module.exports = { create, save, complete, list, detail, remove, feature, publish };
+// 자랑한 작품 목록
+async function published(req, res, next) {
+  try {
+    const { sort, page, size } = req.query;
+    const result = await artworkService.getPublishedArtworks({
+      userId: req.user.id,
+      sort,
+      page,
+      size,
+    });
+
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// 프로필 통계
+async function publishedStats(req, res, next) {
+  try {
+    const stats = await artworkService.getPublishedStats(req.user.id);
+    res.json({ success: true, data: stats });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { create, save, complete, list, detail, remove, feature, publish, published, publishedStats };

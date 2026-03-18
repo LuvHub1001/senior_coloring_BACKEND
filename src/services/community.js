@@ -15,8 +15,8 @@ async function getCommunityArtworks({ sort, page, size, userId }) {
 
   const orderBy =
     sort === 'popular'
-      ? [{ likeCount: 'desc' }, { createdAt: 'desc' }]
-      : [{ createdAt: 'desc' }];
+      ? [{ likeCount: 'desc' }, { publishedAt: 'desc' }]
+      : [{ publishedAt: 'desc' }];
 
   let totalCount = countCache.get('community');
   const [artworks, freshCount] = await Promise.all([
@@ -71,19 +71,20 @@ async function getCommunityArtworks({ sort, page, size, userId }) {
   };
 }
 
-// 오늘의 인기 작품 (오늘 받은 좋아요 기준 상위)
+// 이번 주 인기 작품 (최근 7일 받은 좋아요 기준 상위)
 async function getPopularArtworks({ size, userId }) {
   size = Number(size);
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  weekAgo.setHours(0, 0, 0, 0);
 
-  // 오늘 좋아요를 많이 받은 작품 조회 (캐시)
+  // 이번 주 좋아요를 많이 받은 작품 조회 (캐시)
   const cacheKey = `popular_${size}`;
   let popularArtworkIds = popularCache.get(cacheKey);
   if (!popularArtworkIds) {
     popularArtworkIds = await prisma.communityLike.groupBy({
       by: ['artworkId'],
-      where: { createdAt: { gte: todayStart } },
+      where: { createdAt: { gte: weekAgo } },
       _count: { artworkId: true },
       orderBy: { _count: { artworkId: 'desc' } },
       take: size,
@@ -92,7 +93,7 @@ async function getPopularArtworks({ size, userId }) {
   }
 
   if (popularArtworkIds.length === 0) {
-    // 오늘 좋아요가 없으면 전체 인기순 fallback
+    // 이번 주 좋아요가 없으면 전체 인기순 fallback
     const result = await getCommunityArtworks({ sort: 'popular', page: 1, size, userId });
     return result.content;
   }
@@ -118,7 +119,7 @@ async function getPopularArtworks({ size, userId }) {
     },
   });
 
-  // 오늘의 좋아요 수 순서 유지
+  // 이번 주 좋아요 수 순서 유지
   const orderMap = new Map(ids.map((id, i) => [id, i]));
   artworks.sort((a, b) => orderMap.get(a.id) - orderMap.get(b.id));
 

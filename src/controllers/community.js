@@ -18,7 +18,7 @@ async function list(req, res, next) {
   }
 }
 
-// 오늘의 인기 작품
+// 이번 주 인기 작품
 async function popular(req, res, next) {
   try {
     const { size } = req.query;

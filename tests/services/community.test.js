@@ -84,7 +84,7 @@ describe('Community Service', () => {
       expect(mockPrisma.artwork.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { status: 'COMPLETED', isPublic: true, imageUrl: { not: null } },
-          orderBy: [{ createdAt: 'desc' }],
+          orderBy: [{ publishedAt: 'desc' }],
           skip: 0,
           take: 20,
         }),
@@ -99,7 +99,7 @@ describe('Community Service', () => {
 
       expect(mockPrisma.artwork.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
+          orderBy: [{ likeCount: 'desc' }, { publishedAt: 'desc' }],
         }),
       );
     });

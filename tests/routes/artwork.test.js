@@ -224,4 +224,64 @@ describe('Artwork Routes', () => {
       expect(res.body.data).toBeNull();
     });
   });
+
+  describe('GET /api/artworks/published', () => {
+    test('자랑한 작품 목록을 반환한다', async () => {
+      const publishedArtwork = {
+        id: 'artwork-1',
+        title: '내 작품',
+        imageUrl: 'https://example.com/art.png',
+        likeCount: 5,
+        createdAt: new Date('2026-03-15').toISOString(),
+        publishedAt: new Date('2026-03-16').toISOString(),
+        design: { title: '꽃' },
+        likes: [],
+      };
+      mockPrisma.artwork.findMany.mockResolvedValue([publishedArtwork]);
+      mockPrisma.artwork.count.mockResolvedValue(1);
+
+      const res = await request(app)
+        .get('/api/artworks/published?page=1&size=20')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.content).toHaveLength(1);
+      expect(res.body.data.content[0].artworkId).toBe('artwork-1');
+      expect(res.body.data.totalElements).toBe(1);
+      expect(res.body.data.last).toBe(true);
+    });
+
+    test('인증 없이 접근하면 401을 반환한다', async () => {
+      const res = await request(app)
+        .get('/api/artworks/published');
+
+      expect(res.status).toBe(401);
+    });
+
+    test('잘못된 sort 값이면 400을 반환한다', async () => {
+      const res = await request(app)
+        .get('/api/artworks/published?sort=invalid')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('GET /api/artworks/published/stats', () => {
+    test('자랑한 작품 통계를 반환한다', async () => {
+      mockPrisma.artwork.aggregate = jest.fn().mockResolvedValue({
+        _count: { id: 3 },
+        _sum: { likeCount: 47 },
+      });
+
+      const res = await request(app)
+        .get('/api/artworks/published/stats')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.publishedCount).toBe(3);
+      expect(res.body.data.totalLikesReceived).toBe(47);
+    });
+  });
 });

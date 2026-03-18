@@ -9,7 +9,7 @@ const router = express.Router();
 // 커뮤니티 목록 조회 (비로그인 허용)
 router.get('/artworks', optionalAuth, validate(listCommunityArtworks), list);
 
-// 오늘의 인기 작품 (비로그인 허용)
+// 이번 주 인기 작품 (비로그인 허용)
 router.get('/artworks/popular', optionalAuth, validate(popularCommunityArtworks), popular);
 
 // 작품 상세 조회 (비로그인 허용)

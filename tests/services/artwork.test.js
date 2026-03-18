@@ -443,4 +443,134 @@ describe('Artwork Service', () => {
       ).rejects.toMatchObject({ status: 400 });
     });
   });
+
+  describe('getPublishedArtworks', () => {
+    const publishedArtwork = {
+      id: 'artwork-1',
+      title: '내 작품',
+      imageUrl: 'https://example.com/art.png',
+      likeCount: 5,
+      createdAt: new Date('2026-03-15'),
+      publishedAt: new Date('2026-03-16'),
+      design: { title: '꽃' },
+      likes: [{ id: 'like-1' }],
+    };
+
+    test('자랑한 작품 목록을 publishedAt 최신순으로 조회한다', async () => {
+      mockPrisma.artwork.findMany.mockResolvedValue([publishedArtwork]);
+      mockPrisma.artwork.count.mockResolvedValue(1);
+
+      const result = await artworkService.getPublishedArtworks({
+        userId: 'user-1',
+        sort: 'recent',
+        page: 1,
+        size: 20,
+      });
+
+      expect(mockPrisma.artwork.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1', status: 'COMPLETED', isPublic: true },
+          orderBy: [{ publishedAt: 'desc' }],
+          skip: 0,
+          take: 20,
+        }),
+      );
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0]).toEqual({
+        artworkId: 'artwork-1',
+        title: '내 작품',
+        imageUrl: 'https://example.com/art.png',
+        likeCount: 5,
+        isLiked: true,
+        createdAt: publishedArtwork.createdAt,
+        publishedAt: publishedArtwork.publishedAt,
+      });
+      expect(result.totalElements).toBe(1);
+      expect(result.last).toBe(true);
+    });
+
+    test('인기순 정렬을 적용한다', async () => {
+      mockPrisma.artwork.findMany.mockResolvedValue([]);
+      mockPrisma.artwork.count.mockResolvedValue(0);
+
+      await artworkService.getPublishedArtworks({
+        userId: 'user-1',
+        sort: 'popular',
+        page: 1,
+        size: 20,
+      });
+
+      expect(mockPrisma.artwork.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [{ likeCount: 'desc' }, { publishedAt: 'desc' }],
+        }),
+      );
+    });
+
+    test('title이 없으면 도안 제목을 사용한다', async () => {
+      const noTitleArtwork = { ...publishedArtwork, title: null };
+      mockPrisma.artwork.findMany.mockResolvedValue([noTitleArtwork]);
+      mockPrisma.artwork.count.mockResolvedValue(1);
+
+      const result = await artworkService.getPublishedArtworks({
+        userId: 'user-1',
+        sort: 'recent',
+        page: 1,
+        size: 20,
+      });
+
+      expect(result.content[0].title).toBe('꽃');
+    });
+
+    test('공개 작품이 없으면 빈 배열을 반환한다', async () => {
+      mockPrisma.artwork.findMany.mockResolvedValue([]);
+      mockPrisma.artwork.count.mockResolvedValue(0);
+
+      const result = await artworkService.getPublishedArtworks({
+        userId: 'user-1',
+        sort: 'recent',
+        page: 1,
+        size: 20,
+      });
+
+      expect(result.content).toEqual([]);
+      expect(result.totalElements).toBe(0);
+      expect(result.last).toBe(true);
+    });
+  });
+
+  describe('getPublishedStats', () => {
+    test('자랑한 작품 수와 받은 좋아요 합산을 반환한다', async () => {
+      mockPrisma.artwork.aggregate = jest.fn().mockResolvedValue({
+        _count: { id: 3 },
+        _sum: { likeCount: 47 },
+      });
+
+      const result = await artworkService.getPublishedStats('user-1');
+
+      expect(mockPrisma.artwork.aggregate).toHaveBeenCalledWith({
+        where: { userId: 'user-1', status: 'COMPLETED', isPublic: true },
+        _count: { id: true },
+        _sum: { likeCount: true },
+      });
+      expect(result).toEqual({
+        publishedCount: 3,
+        totalLikesReceived: 47,
+      });
+    });
+
+    test('자랑한 작품이 없으면 0을 반환한다', async () => {
+      mockPrisma.artwork.aggregate = jest.fn().mockResolvedValue({
+        _count: { id: 0 },
+        _sum: { likeCount: null },
+      });
+
+      const result = await artworkService.getPublishedStats('user-1');
+
+      expect(result).toEqual({
+        publishedCount: 0,
+        totalLikesReceived: 0,
+      });
+    });
+  });
 });

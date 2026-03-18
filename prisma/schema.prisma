@@ -81,6 +81,7 @@ model Artwork {
   progress        Int           @default(0)
   status          ArtworkStatus @default(IN_PROGRESS)
   isPublic        Boolean       @default(false) @map("is_public") // 커뮤니티 공개 여부
+  publishedAt     DateTime?     @map("published_at") // 자랑하기(커뮤니티 공개) 시점
   likeCount       Int           @default(0) @map("like_count") // 좋아요 수 (비정규화)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
@@ -94,7 +95,7 @@ model Artwork {
   @@index([userId, status])
   @@index([designId])
   @@index([status, isPublic, likeCount]) // 커뮤니티 인기순 조회
-  @@index([status, isPublic, createdAt]) // 커뮤니티 최신순 조회
+  @@index([status, isPublic, publishedAt]) // 커뮤니티 최신 게시순 조회
   @@index([userId, updatedAt])           // 내 작품 목록 정렬 최적화
   @@map("artworks")
 }

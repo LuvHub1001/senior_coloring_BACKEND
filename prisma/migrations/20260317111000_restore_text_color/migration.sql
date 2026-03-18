@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "themes" ADD COLUMN "text_color" TEXT;
+ALTER TABLE "themes" ADD COLUMN IF NOT EXISTS "text_color" TEXT;

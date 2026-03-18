@@ -272,14 +272,84 @@ async function publishArtwork({ artworkId, userId, isPublic, title }) {
 
   const data = { isPublic };
   if (title !== undefined) data.title = title;
+  if (isPublic) data.publishedAt = new Date();
 
   const updated = await prisma.artwork.update({
     where: { id: artworkId },
     data,
-    select: { id: true, isPublic: true, title: true },
+    select: { id: true, isPublic: true, title: true, publishedAt: true },
   });
 
-  return { artworkId: updated.id, isPublic: updated.isPublic, title: updated.title };
+  return { artworkId: updated.id, isPublic: updated.isPublic, title: updated.title, publishedAt: updated.publishedAt };
+}
+
+// 자랑한 작품 목록 조회 (본인이 공개한 작품)
+async function getPublishedArtworks({ userId, sort, page, size }) {
+  page = Number(page);
+  size = Number(size);
+  const skip = (page - 1) * size;
+
+  const where = { userId, status: 'COMPLETED', isPublic: true };
+
+  const orderBy =
+    sort === 'popular'
+      ? [{ likeCount: 'desc' }, { publishedAt: 'desc' }]
+      : [{ publishedAt: 'desc' }];
+
+  const [artworks, totalCount] = await Promise.all([
+    prisma.artwork.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        imageUrl: true,
+        likeCount: true,
+        createdAt: true,
+        publishedAt: true,
+        design: { select: { title: true } },
+        likes: {
+          where: { userId },
+          select: { id: true },
+        },
+      },
+      orderBy,
+      skip,
+      take: size,
+    }),
+    prisma.artwork.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / size);
+
+  return {
+    content: artworks.map((a) => ({
+      artworkId: a.id,
+      title: a.title || a.design.title,
+      imageUrl: a.imageUrl,
+      likeCount: a.likeCount,
+      isLiked: a.likes?.length > 0,
+      createdAt: a.createdAt,
+      publishedAt: a.publishedAt,
+    })),
+    page,
+    size,
+    totalElements: totalCount,
+    last: page >= totalPages,
+  };
+}
+
+// 프로필 통계 (자랑한 작품 수, 받은 좋아요 합산)
+async function getPublishedStats(userId) {
+  const result = await prisma.artwork.aggregate({
+    where: { userId, status: 'COMPLETED', isPublic: true },
+    _count: { id: true },
+    _sum: { likeCount: true },
+  });
+
+  return {
+    publishedCount: result._count.id,
+    totalLikesReceived: result._sum.likeCount || 0,
+  };
 }
 
 module.exports = {
@@ -291,4 +361,6 @@ module.exports = {
   deleteArtwork,
   featureArtwork,
   publishArtwork,
+  getPublishedArtworks,
+  getPublishedStats,
 };
