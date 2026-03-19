@@ -14,20 +14,23 @@ const logger = winston.createLogger({
   ],
 });
 
-// 개발 환경에서는 콘솔에도 출력
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.printf(({ timestamp, level, message, ...meta }) => {
-          const metaStr = Object.keys(meta).length > 1 ? ` ${JSON.stringify(meta)}` : '';
-          return `${timestamp} ${level}: ${message}${metaStr}`;
-        }),
-      ),
-    }),
-  );
-}
+// 콘솔 출력 (Railway 등 클라우드 환경에서 로그 확인을 위해 항상 활성화)
+logger.add(
+  new winston.transports.Console({
+    format: process.env.NODE_ENV === 'production'
+      ? winston.format.combine(
+          winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+          winston.format.json(),
+        )
+      : winston.format.combine(
+          winston.format.colorize(),
+          winston.format.printf(({ timestamp, level, message, ...meta }) => {
+            const metaStr = Object.keys(meta).length > 1 ? ` ${JSON.stringify(meta)}` : '';
+            return `${timestamp} ${level}: ${message}${metaStr}`;
+          }),
+        ),
+  }),
+);
 
 // morgan 스트림 연동
 logger.stream = {
