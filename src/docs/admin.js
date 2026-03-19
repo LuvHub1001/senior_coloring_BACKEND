@@ -654,3 +654,136 @@
  *       404:
  *         description: 공지사항을 찾을 수 없음
  */
+
+/**
+ * @swagger
+ * /api/admin/reports:
+ *   get:
+ *     tags: [Admin]
+ *     summary: 신고 목록 조회
+ *     description: 작품 신고 목록 조회 (페이지네이션 + status 필터)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, RESOLVED, DISMISSED]
+ *         description: 신고 처리 상태 필터
+ *     responses:
+ *       200:
+ *         description: 신고 목록
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       artworkId:
+ *                         type: string
+ *                         format: uuid
+ *                       artworkTitle:
+ *                         type: string
+ *                       artworkImageUrl:
+ *                         type: string
+ *                         nullable: true
+ *                       reporterNickname:
+ *                         type: string
+ *                       authorNickname:
+ *                         type: string
+ *                       reason:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                         enum: [PENDING, RESOLVED, DISMISSED]
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                 totalCount:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 pageSize:
+ *                   type: integer
+ *       401:
+ *         description: 인증 실패
+ *       403:
+ *         description: 관리자 권한 필요
+ */
+
+/**
+ * @swagger
+ * /api/admin/reports/{reportId}:
+ *   put:
+ *     tags: [Admin]
+ *     summary: 신고 상태 변경 (처리/기각)
+ *     description: |
+ *       RESOLVED: 신고 처리 완료 + 해당 작품 자동 비공개 (isPublic = false)
+ *       DISMISSED: 신고 기각, 작품에 영향 없음
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reportId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: 신고 건 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [RESOLVED, DISMISSED]
+ *                 description: "RESOLVED(처리+작품 비공개) 또는 DISMISSED(기각)"
+ *     responses:
+ *       200:
+ *         description: 처리 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: 잘못된 status 값
+ *       401:
+ *         description: 인증 실패
+ *       403:
+ *         description: 관리자 권한 필요
+ *       404:
+ *         description: 신고 건을 찾을 수 없음
+ *       409:
+ *         description: 이미 처리된 신고 건
+ */

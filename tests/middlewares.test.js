@@ -59,13 +59,14 @@ describe('requestId middleware', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  test('기존 X-Request-Id 헤더를 사용한다', () => {
-    const req = { headers: { 'x-request-id': 'existing-id' } };
+  test('클라이언트 제공 X-Request-Id를 무시하고 서버에서 생성한다', () => {
+    const req = { headers: { 'x-request-id': 'spoofed-id' } };
     const res = { setHeader: jest.fn() };
     const next = jest.fn();
 
     requestId(req, res, next);
 
-    expect(req.id).toBe('existing-id');
+    expect(req.id).not.toBe('spoofed-id');
+    expect(req.id).toMatch(/^[0-9a-f]{8}-/); // UUID 형식
   });
 });

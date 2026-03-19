@@ -53,6 +53,7 @@ const mockArtwork = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  artworkService.statsCache.clear();
 });
 
 describe('Artwork Service', () => {

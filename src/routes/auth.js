@@ -119,6 +119,42 @@ router.post('/refresh', async (req, res, next) => {
   }
 });
 
+// E2E 테스트 전용 로그인 (프로덕션 비활성화)
+const TEST_ALLOWED_EMAILS = ['e2e-test@artispace.co.kr', 'admin@artispace.co.kr'];
+
+router.post('/test-login', async (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ success: false, error: 'Not Found' });
+  }
+
+  try {
+    const { email } = req.body;
+
+    if (!email || !TEST_ALLOWED_EMAILS.includes(email)) {
+      return res.status(403).json({ success: false, error: '허용되지 않은 테스트 계정입니다.' });
+    }
+
+    const prisma = require('../config/prisma');
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, role: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: '테스트 계정이 등록되지 않았습니다. prisma db seed를 실행해주세요.' });
+    }
+
+    const accessToken = generateToken(user);
+    const refresh = await generateRefreshToken(user.id);
+
+    setTokenCookies(res, accessToken, refresh.token);
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // 로그아웃 (모든 refresh token 무효화 + 쿠키 제거)
 router.post('/logout', authenticate, async (req, res, next) => {
   try {

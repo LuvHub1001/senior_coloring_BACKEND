@@ -20,7 +20,7 @@ function isInternalIp(ip) {
   return INTERNAL_IP_PATTERNS.some((pattern) => pattern.test(ip));
 }
 
-async function validateNotInternalIp(urlString) {
+async function resolveAndValidate(urlString) {
   const { hostname } = new URL(urlString);
   const { address } = await dns.lookup(hostname);
   if (isInternalIp(address)) {
@@ -28,6 +28,7 @@ async function validateNotInternalIp(urlString) {
     error.status = 403;
     throw error;
   }
+  return address;
 }
 
 const ALLOWED_CONTENT_TYPES = [
@@ -83,13 +84,23 @@ async function resizeImage(buffer, { w, q, f }) {
 // 이미지 프록시 (Supabase Storage CORS 우회 + 리사이징)
 async function proxy(req, res, next) {
   try {
+    // CORS 헤더를 먼저 설정 (에러 응답에도 포함되도록)
+    const requestOrigin = req.headers.origin;
+    const corsOrigin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
+    res.set({
+      'Access-Control-Allow-Origin': corsOrigin,
+      'Access-Control-Allow-Methods': 'GET',
+      'Vary': 'Origin',
+    });
+
     const { url, f } = req.query;
     const w = req.query.w != null ? Number(req.query.w) : undefined;
     const q = req.query.q != null ? Number(req.query.q) : 80;
     const needsResize = w || f || q !== 80;
 
     // SSRF 방어: DNS 해석 후 내부 IP 여부 확인
-    await validateNotInternalIp(url);
+    // (Supabase URL만 허용하는 validator와 이중 방어)
+    await resolveAndValidate(url);
 
     const response = await fetch(url, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT),
@@ -152,18 +163,13 @@ async function proxy(req, res, next) {
       cacheMaxAge = RESIZE_CACHE_MAX_AGE;
     }
 
-    const requestOrigin = req.headers.origin;
-    const corsOrigin = allowedOrigins.includes(requestOrigin) ? requestOrigin : allowedOrigins[0];
-
     const headers = {
       'Content-Type': outputContentType,
       'Content-Length': buffer.length,
       'Cache-Control': `public, max-age=${cacheMaxAge}`,
-      'Access-Control-Allow-Origin': corsOrigin,
-      'Access-Control-Allow-Methods': 'GET',
       'X-Content-Type-Options': 'nosniff',
       'Cross-Origin-Resource-Policy': 'cross-origin',
-      'Vary': 'Accept',
+      'Vary': 'Origin, Accept',
     };
 
     // SVG XSS 방지: 스크립트 실행 차단 CSP 헤더 추가

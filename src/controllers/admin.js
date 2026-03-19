@@ -258,6 +258,26 @@ async function deleteNotice(req, res, next) {
   }
 }
 
+// 신고 목록 조회
+async function listReports(req, res, next) {
+  try {
+    const result = await adminService.getReports(req.query);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// 신고 상태 변경
+async function updateReport(req, res, next) {
+  try {
+    await adminService.updateReport(req.params.reportId, { status: req.body.status });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   stats,
   listDesigns,
@@ -279,4 +299,6 @@ module.exports = {
   createNotice,
   updateNotice,
   deleteNotice,
+  listReports,
+  updateReport,
 };

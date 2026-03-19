@@ -2,6 +2,9 @@ const prisma = require('../config/prisma');
 const logger = require('../config/logger');
 const { cleanupExpiredTokens } = require('./jwt');
 const supabase = require('../config/supabase');
+const { statsCache } = require('../services/artwork');
+const { designCache, categoryCache } = require('../services/design');
+const { popularCache, countCache } = require('../services/community');
 
 let intervalHandle = null;
 let morningCheckHandle = null;
@@ -42,6 +45,11 @@ async function cleanupOrphanArtworks() {
   } finally {
     isRunning = false;
   }
+}
+
+// 모든 캐시에서 만료된 항목 일괄 정리 (메모리 누수 방지)
+function purgeAllCaches() {
+  [statsCache, designCache, categoryCache, popularCache, countCache].forEach((cache) => cache.purgeExpired());
 }
 
 // 만료된 refresh token 정리
@@ -166,6 +174,7 @@ function startScheduler() {
   intervalHandle = setInterval(() => {
     cleanupOrphanArtworks();
     cleanupTokens();
+    purgeAllCaches();
   }, INTERVAL);
 
   // 아침 점검 스케줄

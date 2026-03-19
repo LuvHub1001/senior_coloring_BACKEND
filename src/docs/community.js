@@ -256,3 +256,56 @@
  *       404:
  *         description: 작품을 찾을 수 없음
  */
+
+/**
+ * @swagger
+ * /api/community/artworks/{artworkId}/report:
+ *   post:
+ *     tags: [Community]
+ *     summary: 작품 신고
+ *     description: |
+ *       커뮤니티 작품 신고. 같은 작품 중복 신고 불가, 본인 작품 신고 불가.
+ *       신고 누적 시 관리자가 확인 후 처리.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: artworkId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: 신고 대상 작품 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [reason]
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: "신고 사유 (스팸/광고예요, 욕설/혐오 표현이 있어요, 부적절한 내용이에요, 또는 직접 입력)"
+ *                 example: "스팸/광고예요"
+ *     responses:
+ *       200:
+ *         description: 신고 접수 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: 본인 작품 신고 시도 또는 reason 누락/초과
+ *       401:
+ *         description: 인증 실패
+ *       404:
+ *         description: 작품을 찾을 수 없음 (비공개 또는 미완성)
+ *       409:
+ *         description: 이미 신고한 작품 (중복 신고 방지)
+ */

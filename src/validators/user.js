@@ -17,7 +17,7 @@ const updateNickname = z.object({
 const updateProfile = z.object({
   body: z.object({
     nickname: nicknameSchema.optional(),
-    statusMessage: z.string().max(50, '상태 메시지는 50자 이하여야 합니다.').optional(),
+    statusMessage: z.string().max(30, '상태 메시지는 30자 이내로 입력해주세요.').optional(),
     avatarUrl: z.string().max(255, 'avatarUrl은 255자 이하여야 합니다.').nullable().optional(),
   }),
 });
@@ -33,8 +33,8 @@ const listUserPublishedArtworks = z.object({
     userId: z.string().uuid('유효한 사용자 ID가 아닙니다.'),
   }),
   query: z.object({
-    sort: z.enum(['recent', 'popular']).default('recent'),
-    page: z.coerce.number().int().min(1).default(1),
+    sort: z.enum(['recent', 'popular', 'oldest']).default('recent'),
+    page: z.coerce.number().int().min(1).max(100, '페이지는 최대 100까지 조회 가능합니다.').default(1),
     size: z.coerce.number().int().min(1).max(50).default(20),
   }),
 });

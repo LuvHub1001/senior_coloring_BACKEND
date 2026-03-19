@@ -29,7 +29,7 @@ const mockArtwork = {
   status: 'COMPLETED',
   isPublic: true,
   design: { id: 1, title: '꽃 도안', imageUrl: 'https://storage.supabase.co/designs/flower.png' },
-  user: { id: 'user-10', nickname: '테스트유저' },
+  user: { id: 'user-10', nickname: '테스트유저', avatarUrl: null },
   likes: [],
 };
 
@@ -92,6 +92,7 @@ describe('Community Routes', () => {
   describe('GET /api/community/artworks/:artworkId', () => {
     it('작품 상세를 조회한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
+      mockPrisma.communityLike.findFirst.mockResolvedValue(null);
 
       const res = await request(app).get(
         '/api/community/artworks/550e8400-e29b-41d4-a716-446655440000',
@@ -99,7 +100,9 @@ describe('Community Routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.title).toBe('꽃 도안');
-      expect(res.body.data.author).toEqual({ id: 'user-10', nickname: '테스트유저' });
+      expect(res.body.data.author).toEqual({ id: 'user-10', nickname: '테스트유저', avatarUrl: null });
+      expect(res.body.data.isOwnArtwork).toBe(false);
+      expect(res.body.data.lastLiker).toBeNull();
       expect(res.body.data.design).toBeDefined();
     });
 
@@ -135,6 +138,49 @@ describe('Community Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveProperty('isLiked');
       expect(res.body.data).toHaveProperty('likeCount');
+    });
+  });
+
+  describe('POST /api/community/artworks/:artworkId/report', () => {
+    it('비로그인 시 401을 반환한다', async () => {
+      const res = await request(app).post(
+        '/api/community/artworks/550e8400-e29b-41d4-a716-446655440000/report',
+      );
+
+      expect(res.status).toBe(401);
+    });
+
+    it('작품을 신고한다', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        id: 'artwork-1', userId: 'owner-1', status: 'COMPLETED', isPublic: true,
+      });
+      mockPrisma.artworkReport.create.mockResolvedValue({ id: 'report-1' });
+
+      const res = await request(app)
+        .post('/api/community/artworks/550e8400-e29b-41d4-a716-446655440000/report')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({ reason: '스팸/광고예요' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    it('reason 없이 요청하면 400을 반환한다', async () => {
+      const res = await request(app)
+        .post('/api/community/artworks/550e8400-e29b-41d4-a716-446655440000/report')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({});
+
+      expect(res.status).toBe(400);
+    });
+
+    it('잘못된 UUID를 거부한다', async () => {
+      const res = await request(app)
+        .post('/api/community/artworks/not-a-uuid/report')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({ reason: '테스트' });
+
+      expect(res.status).toBe(400);
     });
   });
 });

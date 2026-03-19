@@ -25,7 +25,7 @@ jest.mock('../../src/config/supabase', () => ({
   },
 }));
 
-const { createDesign, getDesigns, getDesignById } = require('../../src/services/design');
+const { createDesign, getDesigns, getDesignById, designCache, categoryCache } = require('../../src/services/design');
 
 const mockDesign = {
   id: 1,
@@ -44,6 +44,8 @@ const mockFile = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  designCache.clear();
+  categoryCache.clear();
 });
 
 describe('Design Service', () => {
@@ -89,6 +91,14 @@ describe('Design Service', () => {
 
       expect(mockPrisma.design.findMany).toHaveBeenCalledWith({
         where: {},
+        select: {
+          id: true,
+          title: true,
+          category: true,
+          description: true,
+          imageUrl: true,
+          createdAt: true,
+        },
         orderBy: { createdAt: 'desc' },
       });
       expect(result).toHaveLength(1);
@@ -101,6 +111,7 @@ describe('Design Service', () => {
 
       expect(mockPrisma.design.findMany).toHaveBeenCalledWith({
         where: { category: '동물' },
+        select: expect.any(Object),
         orderBy: { createdAt: 'desc' },
       });
     });
@@ -112,8 +123,19 @@ describe('Design Service', () => {
 
       expect(mockPrisma.design.findMany).toHaveBeenCalledWith({
         where: {},
+        select: expect.any(Object),
         orderBy: { createdAt: 'desc' },
       });
+    });
+
+    test('캐시된 결과를 반환한다', async () => {
+      mockPrisma.design.findMany.mockResolvedValue([mockDesign]);
+
+      await getDesigns();
+      await getDesigns();
+
+      // 두 번째 호출에서는 DB를 조회하지 않음
+      expect(mockPrisma.design.findMany).toHaveBeenCalledTimes(1);
     });
   });
 

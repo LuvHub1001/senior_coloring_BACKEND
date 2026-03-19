@@ -131,3 +131,47 @@
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+
+/**
+ * @swagger
+ * /api/auth/test-login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: E2E 테스트 전용 로그인
+ *     description: |
+ *       OAuth 없이 쿠키 기반 인증을 설정하는 테스트 전용 엔드포인트.
+ *       **프로덕션 환경에서는 404 반환 (완전 비활성화).**
+ *       허용된 테스트 이메일: e2e-test@artispace.co.kr (USER), admin@artispace.co.kr (ADMIN)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "e2e-test@artispace.co.kr"
+ *                 description: 사전 등록된 테스트 계정 이메일
+ *     responses:
+ *       200:
+ *         description: 로그인 성공 (Set-Cookie에 token, refreshToken 설정)
+ *         headers:
+ *           Set-Cookie:
+ *             schema:
+ *               type: string
+ *               example: "token=eyJ...; HttpOnly; Path=/; Max-Age=3600"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       403:
+ *         description: 허용되지 않은 테스트 계정
+ *       404:
+ *         description: 프로덕션 환경 또는 테스트 계정 미등록
+ */

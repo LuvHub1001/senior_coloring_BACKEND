@@ -1,6 +1,7 @@
 const prisma = require('../config/prisma');
 const { uploadFile, generateFileName, removeFile } = require('../utils/storage');
 const { themeCache } = require('./theme');
+const { designCache, categoryCache } = require('./design');
 
 const DESIGN_BUCKET = 'designs';
 const THEME_BUCKET = 'themes';
@@ -68,7 +69,7 @@ async function createDesign({ title, category, description, file, originalFile }
     originalImageUrl = await uploadFile(DESIGN_BUCKET, origName, originalFile.buffer, originalFile.mimetype);
   }
 
-  return prisma.design.create({
+  const design = await prisma.design.create({
     data: {
       title,
       category,
@@ -77,6 +78,10 @@ async function createDesign({ title, category, description, file, originalFile }
       originalImageUrl,
     },
   });
+
+  designCache.clear();
+  categoryCache.clear();
+  return design;
 }
 
 async function updateDesign(id, { title, category, description, file, originalFile }) {
@@ -108,7 +113,7 @@ async function updateDesign(id, { title, category, description, file, originalFi
     }
   }
 
-  return prisma.design.update({
+  const updated = await prisma.design.update({
     where: { id },
     data,
     select: {
@@ -121,6 +126,10 @@ async function updateDesign(id, { title, category, description, file, originalFi
       createdAt: true,
     },
   });
+
+  designCache.clear();
+  categoryCache.clear();
+  return updated;
 }
 
 async function deleteDesign(id) {
@@ -146,6 +155,9 @@ async function deleteDesign(id) {
   }
 
   await prisma.design.delete({ where: { id } });
+
+  designCache.clear();
+  categoryCache.clear();
 }
 
 // ── 테마 관리 ──
@@ -518,6 +530,94 @@ async function deleteNotice(id) {
   await prisma.notice.delete({ where: { id } });
 }
 
+// ── 신고 관리 ──
+
+async function getReports({ page: rawPage, pageSize: rawPageSize, status }) {
+  const page = Number(rawPage) || 1;
+  const pageSize = Number(rawPageSize) || 20;
+
+  const where = status ? { status } : {};
+
+  const [data, totalCount] = await Promise.all([
+    prisma.artworkReport.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        reason: true,
+        status: true,
+        createdAt: true,
+        artwork: {
+          select: {
+            id: true,
+            title: true,
+            imageUrl: true,
+            user: { select: { nickname: true } },
+            design: { select: { title: true } },
+          },
+        },
+        reporter: { select: { nickname: true } },
+      },
+    }),
+    prisma.artworkReport.count({ where }),
+  ]);
+
+  const items = data.map((r) => ({
+    id: r.id,
+    artworkId: r.artwork.id,
+    artworkTitle: r.artwork.title || r.artwork.design.title,
+    artworkImageUrl: r.artwork.imageUrl || null,
+    reporterNickname: r.reporter.nickname,
+    authorNickname: r.artwork.user.nickname,
+    reason: r.reason,
+    status: r.status,
+    createdAt: r.createdAt,
+  }));
+
+  return { data: items, totalCount, page, pageSize };
+}
+
+async function updateReport(reportId, { status }) {
+  const report = await prisma.artworkReport.findUnique({
+    where: { id: reportId },
+    select: { id: true, status: true, artworkId: true },
+  });
+
+  if (!report) {
+    const error = new Error('신고 건을 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  if (report.status !== 'PENDING') {
+    const error = new Error('이미 처리된 신고 건입니다.');
+    error.status = 409;
+    throw error;
+  }
+
+  // RESOLVED: 해당 작품 비공개 처리
+  if (status === 'RESOLVED') {
+    await prisma.$transaction([
+      prisma.artworkReport.update({
+        where: { id: reportId },
+        data: { status },
+      }),
+      prisma.artwork.update({
+        where: { id: report.artworkId },
+        data: { isPublic: false },
+      }),
+    ]);
+  } else {
+    // DISMISSED: 신고만 기각
+    await prisma.artworkReport.update({
+      where: { id: reportId },
+      data: { status },
+    });
+  }
+}
+
 module.exports = {
   getStats,
   getDesigns,
@@ -539,4 +639,6 @@ module.exports = {
   createNotice,
   updateNotice,
   deleteNotice,
+  getReports,
+  updateReport,
 };

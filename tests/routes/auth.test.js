@@ -40,7 +40,7 @@ describe('Auth Routes', () => {
       };
 
       mockPrisma.refreshToken.findUnique.mockResolvedValue(storedToken);
-      mockPrisma.refreshToken.update.mockResolvedValue({});
+      mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
       mockPrisma.refreshToken.create.mockResolvedValue({
         token: 'new-refresh-token',
         expiresAt: new Date(Date.now() + 86400000 * 30),
@@ -74,7 +74,7 @@ describe('Auth Routes', () => {
       };
 
       mockPrisma.refreshToken.findUnique.mockResolvedValue(storedToken);
-      mockPrisma.refreshToken.update.mockResolvedValue({});
+      mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
       mockPrisma.refreshToken.create.mockResolvedValue({
         token: 'new-refresh-token',
         expiresAt: new Date(Date.now() + 86400000 * 30),

@@ -43,6 +43,7 @@ const mockPrisma = {
   },
   communityLike: {
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
     deleteMany: jest.fn(),
@@ -76,10 +77,18 @@ const mockPrisma = {
     create: jest.fn(),
     createMany: jest.fn(),
   },
+  artworkReport: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+    count: jest.fn(),
+    update: jest.fn(),
+  },
   refreshToken: {
     create: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
     delete: jest.fn(),
     deleteMany: jest.fn(),
   },

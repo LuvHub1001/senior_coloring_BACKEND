@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
 const isProduction = process.env.NODE_ENV === 'production';
@@ -32,7 +33,34 @@ app.set('trust proxy', 1);
 app.use(requestId);
 
 // 보안 미들웨어
-app.use(helmet());
+app.use(
+  helmet({
+    // CSP: API 서버이므로 모든 리소스 로딩 차단
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    // HSTS: HTTPS 강제 (1년, 서브도메인 포함)
+    strictTransportSecurity: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+    },
+    // 클릭재킹 방지
+    frameguard: { action: 'deny' },
+    // Referrer 최소 노출
+    referrerPolicy: { policy: 'no-referrer' },
+    // 기능 제한 (API 서버에 불필요한 브라우저 기능 차단)
+    permissionsPolicy: {
+      features: {
+        camera: [],
+        microphone: [],
+        geolocation: [],
+      },
+    },
+  }),
+);
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -49,6 +77,9 @@ app.use(
     maxAge: 86400,
   }),
 );
+
+// 응답 압축 (gzip/br) — JSON 응답 대역폭 40-70% 절감
+app.use(compression());
 
 // 쿠키 파서
 app.use(cookieParser());

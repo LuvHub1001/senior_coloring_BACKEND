@@ -62,4 +62,19 @@ async function toggleLike(req, res, next) {
   }
 }
 
-module.exports = { list, popular, detail, toggleLike };
+// 작품 신고
+async function report(req, res, next) {
+  try {
+    await communityService.reportArtwork({
+      artworkId: req.params.artworkId,
+      userId: req.user.id,
+      reason: req.body.reason,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { list, popular, detail, toggleLike, report };

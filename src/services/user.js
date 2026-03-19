@@ -2,6 +2,8 @@ const prisma = require('../config/prisma');
 const { createNotification } = require('./notification');
 
 // getUserProfile의 select 정의 (공유)
+const NICKNAME_COOLDOWN_DAYS = 7;
+
 const USER_PROFILE_SELECT = {
   id: true,
   nickname: true,
@@ -13,6 +15,7 @@ const USER_PROFILE_SELECT = {
   selectedTheme: { select: { id: true, name: true, toggleType: true } },
   featuredArtworkId: true,
   featuredArtwork: { select: { id: true, imageUrl: true } },
+  nicknameChangedAt: true,
   createdAt: true,
 };
 
@@ -53,18 +56,42 @@ async function updateNickname(userId, nickname) {
 async function updateProfile(userId, { nickname, statusMessage, avatarUrl }) {
   const data = {};
 
-  // 닉네임 변경 시 중복 검사
+  // 닉네임 변경 시 쿨다운 + 중복 검사
   if (nickname !== undefined) {
-    const existing = await prisma.user.findFirst({
-      where: { nickname, id: { not: userId } },
-      select: { id: true },
+    // 현재 유저 조회 (닉네임 동일 여부 + 쿨다운 확인)
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { nickname: true, nicknameChangedAt: true },
     });
-    if (existing) {
-      const error = new Error('이미 사용 중인 닉네임입니다.');
-      error.status = 409;
-      throw error;
+
+    // 닉네임이 실제로 변경되는 경우에만 쿨다운 체크
+    if (currentUser && nickname !== currentUser.nickname) {
+      // 7일 쿨다운 검사
+      if (currentUser.nicknameChangedAt) {
+        const cooldownEnd = new Date(currentUser.nicknameChangedAt.getTime() + NICKNAME_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+        if (new Date() < cooldownEnd) {
+          const error = new Error('닉네임 변경 후 7일간 재변경이 불가합니다.');
+          error.status = 429;
+          error.code = 'NICKNAME_CHANGE_COOLDOWN';
+          error.availableAt = cooldownEnd;
+          throw error;
+        }
+      }
+
+      // 중복 검사
+      const existing = await prisma.user.findFirst({
+        where: { nickname, id: { not: userId } },
+        select: { id: true },
+      });
+      if (existing) {
+        const error = new Error('이미 사용 중인 닉네임입니다.');
+        error.status = 409;
+        throw error;
+      }
+
+      data.nickname = nickname;
+      data.nicknameChangedAt = new Date();
     }
-    data.nickname = nickname;
   }
 
   if (statusMessage !== undefined) {
@@ -99,37 +126,37 @@ async function updateProfile(userId, { nickname, statusMessage, avatarUrl }) {
   }
 }
 
-// 타인 프로필 조회
+// 타인 프로필 조회 (user + stats 병렬 조회)
 async function getPublicProfile({ targetUserId, currentUserId }) {
-  const user = await prisma.user.findUnique({
-    where: { id: targetUserId },
-    select: {
-      id: true,
-      nickname: true,
-      avatarUrl: true,
-      statusMessage: true,
-      followerCount: true,
-      ...(currentUserId && {
-        followers: {
-          where: { followerId: currentUserId },
-          select: { id: true },
-        },
-      }),
-    },
-  });
+  const [user, stats] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        nickname: true,
+        avatarUrl: true,
+        statusMessage: true,
+        followerCount: true,
+        ...(currentUserId && {
+          followers: {
+            where: { followerId: currentUserId },
+            select: { id: true },
+          },
+        }),
+      },
+    }),
+    prisma.artwork.aggregate({
+      where: { userId: targetUserId, status: 'COMPLETED', isPublic: true },
+      _count: { id: true },
+      _sum: { likeCount: true },
+    }),
+  ]);
 
   if (!user) {
     const error = new Error('사용자를 찾을 수 없습니다.');
     error.status = 404;
     throw error;
   }
-
-  // 게시 통계
-  const stats = await prisma.artwork.aggregate({
-    where: { userId: targetUserId, status: 'COMPLETED', isPublic: true },
-    _count: { id: true },
-    _sum: { likeCount: true },
-  });
 
   return {
     id: user.id,
@@ -162,10 +189,11 @@ async function getUserPublishedArtworks({ targetUserId, currentUserId, sort, pag
 
   const where = { userId: targetUserId, status: 'COMPLETED', isPublic: true };
 
-  const orderBy =
-    sort === 'popular'
-      ? [{ likeCount: 'desc' }, { publishedAt: 'desc' }]
-      : [{ publishedAt: 'desc' }];
+  const orderByMap = {
+    popular: [{ likeCount: 'desc' }, { publishedAt: 'desc' }],
+    oldest: [{ publishedAt: 'asc' }],
+  };
+  const orderBy = orderByMap[sort] || [{ publishedAt: 'desc' }];
 
   const [artworks, totalCount] = await Promise.all([
     prisma.artwork.findMany({
@@ -219,11 +247,11 @@ async function followUser({ followerId, followingId }) {
     throw error;
   }
 
-  // 대상 유저 존재 확인
-  const targetUser = await prisma.user.findUnique({
-    where: { id: followingId },
-    select: { id: true },
-  });
+  // 대상 유저 존재 확인 + 팔로워 닉네임 조회 (알림용, 병렬)
+  const [targetUser, followerUser] = await Promise.all([
+    prisma.user.findUnique({ where: { id: followingId }, select: { id: true } }),
+    prisma.user.findUnique({ where: { id: followerId }, select: { nickname: true } }),
+  ]);
   if (!targetUser) {
     const error = new Error('사용자를 찾을 수 없습니다.');
     error.status = 404;
@@ -249,13 +277,14 @@ async function followUser({ followerId, followingId }) {
     }),
   ]);
 
-  // 팔로우 알림 생성
+  // 팔로우 알림 생성 (follow 타입은 artworkId 없음)
+  const followerNickname = followerUser?.nickname || '알 수 없는 사용자';
   createNotification({
     userId: followingId,
     targetUserId: followerId,
     type: 'follow',
     title: '새 관심 작가',
-    message: '나를 관심 작가로 등록했어요',
+    message: `${followerNickname}님이 나를 관심 작가로 등록했어요`,
   });
 
   return { isFollowing: true, followerCount: updated.followerCount };

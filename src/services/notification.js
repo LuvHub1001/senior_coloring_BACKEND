@@ -27,6 +27,7 @@ async function getNotifications({ userId, type, page = 1, size = 20 }) {
         createdAt: true,
         targetUserId: true,
         targetUser: { select: { nickname: true, avatarUrl: true } },
+        artwork: { select: { imageUrl: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip,
@@ -38,7 +39,13 @@ async function getNotifications({ userId, type, page = 1, size = 20 }) {
     }),
   ]);
 
-  return { content: notifications, unreadCount };
+  // artworkImageUrl 평탄화
+  const content = notifications.map(({ artwork, ...rest }) => ({
+    ...rest,
+    artworkImageUrl: artwork?.imageUrl || null,
+  }));
+
+  return { content, unreadCount };
 }
 
 // 개별 읽기
@@ -71,10 +78,10 @@ async function readAllNotifications({ userId }) {
 }
 
 // 알림 생성 (내부 호출용 — 실패해도 비즈니스 로직을 중단하지 않음)
-async function createNotification({ userId, targetUserId, type, title, message }) {
+async function createNotification({ userId, targetUserId, type, title, message, artworkId }) {
   try {
     await prisma.notification.create({
-      data: { userId, targetUserId, type, title, message },
+      data: { userId, targetUserId, type, title, message, artworkId: artworkId || null },
     });
   } catch (err) {
     logger.error('알림 생성 실패', { userId, type, error: err.message });

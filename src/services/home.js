@@ -5,7 +5,7 @@ const themeService = require('./theme');
 async function getHomeData(userId) {
   const [user, artworks, themes] = await Promise.all([
     userService.getUserProfile(userId),
-    artworkService.getMyArtworks({ userId, status: 'COMPLETED' }),
+    artworkService.getMyArtworks({ userId, status: 'COMPLETED', limit: 20 }),
     themeService.getThemes(userId),
   ]);
 

@@ -1,7 +1,11 @@
 const prisma = require('../config/prisma');
 const { uploadFile, removeFile } = require('../utils/storage');
+const { MemoryCache } = require('../utils/cache');
 const { createNotification, createNotificationBatch } = require('./notification');
 const BUCKET_NAME = 'artworks';
+
+// 프로필 통계 캐시 (TTL 3분, 유저별)
+const statsCache = new MemoryCache(3 * 60 * 1000);
 
 // 색칠 시작 (항상 새 작품 생성)
 async function createArtwork({ userId, designId, rootArtworkId }) {
@@ -160,8 +164,8 @@ async function completeArtwork({ artworkId, userId }) {
   return { ...artwork, unlockedTheme: unlockedTheme || null, replacedRoot, updatedFeatured };
 }
 
-// 내 작품 목록 조회
-async function getMyArtworks({ userId, status }) {
+// 내 작품 목록 조회 (limit 지정 시 최근 N개만 반환)
+async function getMyArtworks({ userId, status, limit }) {
   const where = { userId };
   if (status) {
     where.status = status;
@@ -183,6 +187,7 @@ async function getMyArtworks({ userId, status }) {
       design: { select: { id: true, title: true, imageUrl: true, category: true } },
     },
     orderBy: { updatedAt: 'desc' },
+    ...(limit && { take: limit }),
   });
 }
 
@@ -275,6 +280,9 @@ async function publishArtwork({ artworkId, userId, isPublic, title }) {
   if (title !== undefined) data.title = title;
   if (isPublic) data.publishedAt = new Date();
 
+  // 공개 상태 변경 시 통계 캐시 무효화
+  statsCache.invalidate(`stats_${userId}`);
+
   const updated = await prisma.artwork.update({
     where: { id: artworkId },
     data,
@@ -283,18 +291,22 @@ async function publishArtwork({ artworkId, userId, isPublic, title }) {
 
   // 공개 전환 시 팔로워에게 알림 일괄 생성
   if (isPublic) {
-    const followers = await prisma.follow.findMany({
-      where: { followingId: userId },
-      select: { followerId: true },
-    });
-    const artworkTitle = updated.title || artwork.design?.title || '새 작품';
+    const [followers, publisher] = await Promise.all([
+      prisma.follow.findMany({
+        where: { followingId: userId },
+        select: { followerId: true },
+      }),
+      prisma.user.findUnique({ where: { id: userId }, select: { nickname: true } }),
+    ]);
+    const nickname = publisher?.nickname || '관심 작가';
     createNotificationBatch(
       followers.map((f) => ({
         userId: f.followerId,
         targetUserId: userId,
         type: 'artwork',
         title: '새 작품',
-        message: `'${artworkTitle}' 작품을 공개했어요`,
+        message: `관심 작가인 ${nickname}님이 작품을 자랑했어요`,
+        artworkId: updated.id,
       })),
     );
   }
@@ -310,10 +322,11 @@ async function getPublishedArtworks({ userId, sort, page, size }) {
 
   const where = { userId, status: 'COMPLETED', isPublic: true };
 
-  const orderBy =
-    sort === 'popular'
-      ? [{ likeCount: 'desc' }, { publishedAt: 'desc' }]
-      : [{ publishedAt: 'desc' }];
+  const orderByMap = {
+    popular: [{ likeCount: 'desc' }, { publishedAt: 'desc' }],
+    oldest: [{ publishedAt: 'asc' }],
+  };
+  const orderBy = orderByMap[sort] || [{ publishedAt: 'desc' }];
 
   const [artworks, totalCount] = await Promise.all([
     prisma.artwork.findMany({
@@ -357,8 +370,12 @@ async function getPublishedArtworks({ userId, sort, page, size }) {
   };
 }
 
-// 프로필 통계 (자랑한 작품 수, 받은 좋아요 합산)
+// 프로필 통계 (자랑한 작품 수, 받은 좋아요 합산) — 유저별 3분 캐싱
 async function getPublishedStats(userId) {
+  const cacheKey = `stats_${userId}`;
+  const cached = statsCache.get(cacheKey);
+  if (cached) return cached;
+
   const [result, user] = await Promise.all([
     prisma.artwork.aggregate({
       where: { userId, status: 'COMPLETED', isPublic: true },
@@ -371,11 +388,14 @@ async function getPublishedStats(userId) {
     }),
   ]);
 
-  return {
+  const stats = {
     publishedCount: result._count.id,
     totalLikesReceived: result._sum.likeCount || 0,
     followerCount: user?.followerCount || 0,
   };
+
+  statsCache.set(cacheKey, stats);
+  return stats;
 }
 
 module.exports = {
@@ -389,4 +409,5 @@ module.exports = {
   publishArtwork,
   getPublishedArtworks,
   getPublishedStats,
+  statsCache,
 };

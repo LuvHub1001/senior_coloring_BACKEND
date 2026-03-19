@@ -12,7 +12,7 @@ jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => mockPrisma),
 }));
 
-const { getUserProfile, updateNickname, getPublicProfile, followUser, unfollowUser } = require('../../src/services/user');
+const { getUserProfile, updateNickname, updateProfile, getPublicProfile, followUser, unfollowUser } = require('../../src/services/user');
 
 const mockUser = {
   id: 'user-1',
@@ -50,6 +50,7 @@ describe('User Service', () => {
           selectedTheme: { select: { id: true, name: true, toggleType: true } },
           featuredArtworkId: true,
           featuredArtwork: { select: { id: true, imageUrl: true } },
+          nicknameChangedAt: true,
           createdAt: true,
         },
       });
@@ -108,6 +109,73 @@ describe('User Service', () => {
         message: '사용자를 찾을 수 없습니다.',
         status: 404,
       });
+    });
+  });
+
+  describe('updateProfile — 닉네임 쿨다운', () => {
+    test('닉네임 변경 시 nicknameChangedAt을 설정한다', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        nickname: '기존닉', nicknameChangedAt: null,
+      });
+      mockPrisma.user.findFirst.mockResolvedValue(null); // 중복 없음
+      mockPrisma.user.update.mockResolvedValue({ ...mockUser, nickname: '새닉네임', nicknameChangedAt: new Date() });
+
+      const result = await updateProfile('user-1', { nickname: '새닉네임' });
+
+      const updateCall = mockPrisma.user.update.mock.calls[0][0];
+      expect(updateCall.data.nickname).toBe('새닉네임');
+      expect(updateCall.data.nicknameChangedAt).toBeInstanceOf(Date);
+    });
+
+    test('7일 이내 닉네임 재변경 시 429 에러를 던진다', async () => {
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        nickname: '기존닉', nicknameChangedAt: threeDaysAgo,
+      });
+
+      await expect(
+        updateProfile('user-1', { nickname: '새닉네임' }),
+      ).rejects.toMatchObject({
+        status: 429,
+        code: 'NICKNAME_CHANGE_COOLDOWN',
+      });
+    });
+
+    test('7일 경과 후에는 닉네임 변경이 가능하다', async () => {
+      const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        nickname: '기존닉', nicknameChangedAt: eightDaysAgo,
+      });
+      mockPrisma.user.findFirst.mockResolvedValue(null);
+      mockPrisma.user.update.mockResolvedValue({ ...mockUser, nickname: '새닉네임' });
+
+      await expect(
+        updateProfile('user-1', { nickname: '새닉네임' }),
+      ).resolves.toBeDefined();
+    });
+
+    test('닉네임이 동일하면 쿨다운 체크 없이 통과한다', async () => {
+      const justNow = new Date();
+      mockPrisma.user.findUnique.mockResolvedValue({
+        nickname: '기존닉', nicknameChangedAt: justNow,
+      });
+      mockPrisma.user.update.mockResolvedValue({ ...mockUser, nickname: '기존닉' });
+
+      // 닉네임 동일 + 상태메시지만 변경 → 쿨다운 무시
+      await expect(
+        updateProfile('user-1', { nickname: '기존닉', statusMessage: '변경됨' }),
+      ).resolves.toBeDefined();
+    });
+
+    test('상태메시지만 변경 시 쿨다운 체크 안 한다', async () => {
+      mockPrisma.user.update.mockResolvedValue({ ...mockUser, statusMessage: '새 메시지' });
+
+      await expect(
+        updateProfile('user-1', { statusMessage: '새 메시지' }),
+      ).resolves.toBeDefined();
+
+      // findUnique는 닉네임 쿨다운 조회용이므로 호출되지 않아야 함
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
     });
   });
 

@@ -127,7 +127,7 @@ describe('통합 워크플로우: 인증 흐름', () => {
     };
 
     mockPrisma.refreshToken.findUnique.mockResolvedValue(storedToken);
-    mockPrisma.refreshToken.update.mockResolvedValue({});
+    mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.refreshToken.create.mockResolvedValue({
       token: 'new-refresh', expiresAt: new Date(Date.now() + 86400000 * 30),
     });
@@ -198,5 +198,65 @@ describe('통합: 권한 검증', () => {
       .delete('/api/artworks/660e8400-e29b-41d4-a716-446655440000')
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
+  });
+});
+
+describe('통합 워크플로우: 신고 → 관리자 처리', () => {
+  const reporterToken = generateToken({ id: 'reporter-1', email: 'reporter@test.com', role: 'USER' });
+  const adminToken = generateToken({ id: 'admin-1', email: 'admin@test.com', role: 'ADMIN' });
+
+  test('작품 신고 → 관리자 목록 조회 → 처리(RESOLVED)', async () => {
+    // 1. 신고 접수
+    mockPrisma.artwork.findUnique.mockResolvedValue({
+      id: 'artwork-1', userId: 'owner-1', status: 'COMPLETED', isPublic: true,
+    });
+    mockPrisma.artworkReport.create.mockResolvedValue({ id: 'report-1' });
+
+    const reportRes = await request(app)
+      .post('/api/community/artworks/550e8400-e29b-41d4-a716-446655440000/report')
+      .set('Authorization', `Bearer ${reporterToken}`)
+      .send({ reason: '부적절한 내용이에요' });
+
+    expect(reportRes.status).toBe(200);
+
+    // 2. 관리자 신고 목록 조회
+    mockPrisma.user.findUnique.mockResolvedValue({ role: 'ADMIN' });
+    mockPrisma.artworkReport.findMany.mockResolvedValue([{
+      id: 'report-1', reason: '부적절한 내용이에요', status: 'PENDING',
+      createdAt: new Date(),
+      artwork: {
+        id: 'artwork-1', title: '신고된작품', imageUrl: 'https://example.com/img.png',
+        user: { nickname: '작성자' }, design: { title: '도안' },
+      },
+      reporter: { nickname: '신고자' },
+    }]);
+    mockPrisma.artworkReport.count.mockResolvedValue(1);
+
+    const listRes = await request(app)
+      .get('/api/admin/reports?status=PENDING')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.data).toHaveLength(1);
+    expect(listRes.body.data[0].status).toBe('PENDING');
+
+    // 3. 관리자가 RESOLVED 처리
+    mockPrisma.artworkReport.findUnique.mockResolvedValue({
+      id: 'report-1', status: 'PENDING', artworkId: 'artwork-1',
+    });
+    mockPrisma.$transaction.mockImplementation((args) => {
+      if (Array.isArray(args)) return Promise.all(args);
+      return args(mockPrisma);
+    });
+    mockPrisma.artworkReport.update.mockResolvedValue({});
+    mockPrisma.artwork.update.mockResolvedValue({});
+
+    const resolveRes = await request(app)
+      .put('/api/admin/reports/550e8400-e29b-41d4-a716-446655440000')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ status: 'RESOLVED' });
+
+    expect(resolveRes.status).toBe(200);
+    expect(resolveRes.body.success).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 const { z } = require('zod');
 
 const paginationQuery = {
-  page: z.coerce.number().int().positive().default(1),
+  page: z.coerce.number().int().positive().max(200, '페이지는 최대 200까지 조회 가능합니다.').default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().max(100).optional(),
 };
@@ -124,6 +124,24 @@ const deleteNotice = z.object({
   }),
 });
 
+const listReports = z.object({
+  query: z.object({
+    ...paginationQuery,
+    status: z.enum(['PENDING', 'RESOLVED', 'DISMISSED']).optional(),
+  }),
+});
+
+const updateReport = z.object({
+  params: z.object({
+    reportId: z.string().uuid('올바른 신고 ID 형식이 아닙니다.'),
+  }),
+  body: z.object({
+    status: z.enum(['RESOLVED', 'DISMISSED'], {
+      errorMap: () => ({ message: 'status는 RESOLVED 또는 DISMISSED만 허용됩니다.' }),
+    }),
+  }),
+});
+
 module.exports = {
   listDesigns,
   createDesign,
@@ -142,4 +160,6 @@ module.exports = {
   createNotice,
   updateNotice,
   deleteNotice,
+  listReports,
+  updateReport,
 };

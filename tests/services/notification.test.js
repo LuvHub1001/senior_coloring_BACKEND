@@ -152,7 +152,7 @@ describe('Notification Service', () => {
       });
 
       expect(mockPrisma.notification.create).toHaveBeenCalledWith({
-        data: { userId: 'user-1', targetUserId: 'user-2', type: 'like', title: '좋아요', message: '테스트 메시지' },
+        data: { userId: 'user-1', targetUserId: 'user-2', type: 'like', title: '좋아요', message: '테스트 메시지', artworkId: null },
       });
     });
 

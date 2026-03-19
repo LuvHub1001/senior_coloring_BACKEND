@@ -33,6 +33,26 @@ const themes = [
   },
 ];
 
+// E2E 테스트 전용 계정 (프로덕션 배포 시 test-login 엔드포인트가 비활성화되므로 안전)
+const testUsers = [
+  {
+    email: 'e2e-test@artispace.co.kr',
+    nickname: 'E2E테스터',
+    avatarUrl: '🧪',
+    provider: 'test',
+    providerId: 'e2e-test-001',
+    role: 'USER',
+  },
+  {
+    email: 'admin@artispace.co.kr',
+    nickname: '관리자',
+    avatarUrl: '🔧',
+    provider: 'test',
+    providerId: 'e2e-admin-001',
+    role: 'ADMIN',
+  },
+];
+
 async function main() {
   for (const theme of themes) {
     await prisma.theme.upsert({
@@ -42,6 +62,15 @@ async function main() {
     });
   }
   console.log('테마 시드 데이터 등록 완료');
+
+  for (const user of testUsers) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: { role: user.role },
+      create: user,
+    });
+  }
+  console.log('E2E 테스트 계정 등록 완료');
 }
 
 main()

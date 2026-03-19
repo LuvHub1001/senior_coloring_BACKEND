@@ -21,6 +21,9 @@ const SVG_DANGEROUS_PATTERNS = [
   /<use[^>]+href\s*=\s*["'](?!#)/i,
   /<!\[CDATA\[/i,                  // CDATA 블록 (스크립트 우회 방지)
   /<!--.*?<script/is,              // HTML 주석 내 스크립트 삽입 방지
+  /@import\b/i,                    // CSS @import를 통한 외부 리소스 로드 차단
+  /<!ENTITY/i,                     // XML External Entity (XXE) 차단
+  /<!DOCTYPE[^>]+SYSTEM/i,         // 외부 DTD 참조 차단
 ];
 
 /**

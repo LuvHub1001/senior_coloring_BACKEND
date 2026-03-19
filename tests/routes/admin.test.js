@@ -658,6 +658,109 @@ describe('Admin Notices', () => {
   });
 });
 
+describe('Admin Report Management', () => {
+  describe('GET /api/admin/reports', () => {
+    test('관리자가 신고 목록을 조회한다', async () => {
+      mockPrisma.artworkReport.findMany.mockResolvedValue([{
+        id: 'report-1',
+        reason: '스팸/광고예요',
+        status: 'PENDING',
+        createdAt: new Date(),
+        artwork: {
+          id: 'artwork-1', title: '테스트작품', imageUrl: 'https://example.com/img.png',
+          user: { nickname: '작성자' }, design: { title: '도안제목' },
+        },
+        reporter: { nickname: '신고자' },
+      }]);
+      mockPrisma.artworkReport.count.mockResolvedValue(1);
+
+      const res = await request(app)
+        .get('/api/admin/reports')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0]).toHaveProperty('artworkId');
+      expect(res.body.data[0]).toHaveProperty('reporterNickname');
+      expect(res.body.data[0]).toHaveProperty('authorNickname');
+      expect(res.body.data[0].status).toBe('PENDING');
+    });
+
+    test('status 필터로 조회한다', async () => {
+      mockPrisma.artworkReport.findMany.mockResolvedValue([]);
+      mockPrisma.artworkReport.count.mockResolvedValue(0);
+
+      const res = await request(app)
+        .get('/api/admin/reports?status=RESOLVED')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+    });
+
+    test('일반 유저는 403을 반환한다', async () => {
+      const res = await request(app)
+        .get('/api/admin/reports')
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('PUT /api/admin/reports/:reportId', () => {
+    test('신고를 RESOLVED로 처리하면 작품이 비공개된다', async () => {
+      mockPrisma.artworkReport.findUnique.mockResolvedValue({
+        id: 'report-1', status: 'PENDING', artworkId: 'artwork-1',
+      });
+      mockPrisma.$transaction.mockImplementation((args) => {
+        if (Array.isArray(args)) return Promise.all(args);
+        return args(mockPrisma);
+      });
+      mockPrisma.artworkReport.update.mockResolvedValue({});
+      mockPrisma.artwork.update.mockResolvedValue({});
+
+      const res = await request(app)
+        .put('/api/admin/reports/550e8400-e29b-41d4-a716-446655440000')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'RESOLVED' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    test('신고를 DISMISSED로 기각한다', async () => {
+      mockPrisma.artworkReport.findUnique.mockResolvedValue({
+        id: 'report-1', status: 'PENDING', artworkId: 'artwork-1',
+      });
+      mockPrisma.artworkReport.update.mockResolvedValue({});
+
+      const res = await request(app)
+        .put('/api/admin/reports/550e8400-e29b-41d4-a716-446655440000')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'DISMISSED' });
+
+      expect(res.status).toBe(200);
+    });
+
+    test('잘못된 status 값은 400을 반환한다', async () => {
+      const res = await request(app)
+        .put('/api/admin/reports/550e8400-e29b-41d4-a716-446655440000')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'INVALID' });
+
+      expect(res.status).toBe(400);
+    });
+
+    test('일반 유저는 403을 반환한다', async () => {
+      const res = await request(app)
+        .put('/api/admin/reports/550e8400-e29b-41d4-a716-446655440000')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ status: 'RESOLVED' });
+
+      expect(res.status).toBe(403);
+    });
+  });
+});
+
 describe('GET /api/notices', () => {
   test('인증된 사용자가 공지사항 목록을 조회한다', async () => {
     const mockNotices = [

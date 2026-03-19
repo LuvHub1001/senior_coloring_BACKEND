@@ -10,6 +10,7 @@ const mockPrisma = {
   },
   communityLike: {
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
     deleteMany: jest.fn(),
@@ -31,11 +32,15 @@ jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn(() => mockPrisma),
 }));
 
+// artworkReport mock 추가
+mockPrisma.artworkReport = { create: jest.fn() };
+
 const {
   getCommunityArtworks,
   getPopularArtworks,
   getCommunityArtworkDetail,
   toggleLike,
+  reportArtwork,
   popularCache,
   countCache,
 } = require('../../src/services/community');
@@ -48,7 +53,7 @@ const mockArtwork = {
   status: 'COMPLETED',
   isPublic: true,
   design: { id: 1, title: '꽃 도안', imageUrl: 'https://storage.supabase.co/designs/flower.png' },
-  user: { id: 'user-10', nickname: '테스트유저' },
+  user: { id: 'user-10', nickname: '테스트유저', avatarUrl: null },
   likes: [],
 };
 
@@ -147,6 +152,9 @@ describe('Community Service', () => {
   describe('getCommunityArtworkDetail', () => {
     it('커뮤니티 작품 상세를 조회한다', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
+      mockPrisma.communityLike.findFirst.mockResolvedValue({
+        user: { id: 'liker-1', nickname: '좋아요유저', avatarUrl: '🐶' },
+      });
 
       const result = await getCommunityArtworkDetail({
         artworkId: 'artwork-1',
@@ -155,7 +163,9 @@ describe('Community Service', () => {
 
       expect(result.artworkId).toBe('artwork-1');
       expect(result.title).toBe('꽃 도안');
-      expect(result.author).toEqual({ id: 'user-10', nickname: '테스트유저' });
+      expect(result.author).toEqual({ id: 'user-10', nickname: '테스트유저', avatarUrl: null });
+      expect(result.isOwnArtwork).toBe(false);
+      expect(result.lastLiker).toEqual({ id: 'liker-1', nickname: '좋아요유저', avatarUrl: '🐶' });
       expect(result.design).toEqual({
         id: 1,
         title: '꽃 도안',
@@ -163,8 +173,33 @@ describe('Community Service', () => {
       });
     });
 
+    it('좋아요가 없으면 lastLiker가 null이다', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
+      mockPrisma.communityLike.findFirst.mockResolvedValue(null);
+
+      const result = await getCommunityArtworkDetail({
+        artworkId: 'artwork-1',
+        userId: null,
+      });
+
+      expect(result.lastLiker).toBeNull();
+    });
+
+    it('본인 작품이면 isOwnArtwork이 true이다', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork);
+      mockPrisma.communityLike.findFirst.mockResolvedValue(null);
+
+      const result = await getCommunityArtworkDetail({
+        artworkId: 'artwork-1',
+        userId: 'user-10',
+      });
+
+      expect(result.isOwnArtwork).toBe(true);
+    });
+
     it('존재하지 않는 작품 조회 시 404 에러', async () => {
       mockPrisma.artwork.findUnique.mockResolvedValue(null);
+      mockPrisma.communityLike.findFirst.mockResolvedValue(null);
 
       await expect(
         getCommunityArtworkDetail({ artworkId: 'nonexistent', userId: null }),
@@ -176,6 +211,7 @@ describe('Community Service', () => {
         ...mockArtwork,
         status: 'IN_PROGRESS',
       });
+      mockPrisma.communityLike.findFirst.mockResolvedValue(null);
 
       await expect(
         getCommunityArtworkDetail({ artworkId: 'artwork-1', userId: null }),
@@ -187,6 +223,7 @@ describe('Community Service', () => {
         ...mockArtwork,
         isPublic: false,
       });
+      mockPrisma.communityLike.findFirst.mockResolvedValue(null);
 
       await expect(
         getCommunityArtworkDetail({ artworkId: 'artwork-1', userId: null }),
@@ -271,6 +308,64 @@ describe('Community Service', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].artworkId).toBe('artwork-1');
+    });
+  });
+
+  describe('reportArtwork', () => {
+    it('작품을 신고한다', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        id: 'artwork-1', userId: 'owner-1', status: 'COMPLETED', isPublic: true,
+      });
+      mockPrisma.artworkReport.create.mockResolvedValue({ id: 'report-1' });
+
+      await expect(
+        reportArtwork({ artworkId: 'artwork-1', userId: 'user-1', reason: '스팸/광고예요' }),
+      ).resolves.toBeUndefined();
+
+      expect(mockPrisma.artworkReport.create).toHaveBeenCalledWith({
+        data: { artworkId: 'artwork-1', reporterId: 'user-1', reason: '스팸/광고예요' },
+      });
+    });
+
+    it('본인 작품 신고 시 400 에러를 던진다', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        id: 'artwork-1', userId: 'user-1', status: 'COMPLETED', isPublic: true,
+      });
+
+      await expect(
+        reportArtwork({ artworkId: 'artwork-1', userId: 'user-1', reason: '테스트' }),
+      ).rejects.toMatchObject({ status: 400, message: '본인 작품은 신고할 수 없습니다.' });
+    });
+
+    it('중복 신고 시 409 에러를 던진다', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        id: 'artwork-1', userId: 'owner-1', status: 'COMPLETED', isPublic: true,
+      });
+      const prismaError = new Error('Unique constraint failed');
+      prismaError.code = 'P2002';
+      mockPrisma.artworkReport.create.mockRejectedValue(prismaError);
+
+      await expect(
+        reportArtwork({ artworkId: 'artwork-1', userId: 'user-1', reason: '테스트' }),
+      ).rejects.toMatchObject({ status: 409, message: '이미 신고한 작품입니다.' });
+    });
+
+    it('존재하지 않는 작품 신고 시 404 에러를 던진다', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue(null);
+
+      await expect(
+        reportArtwork({ artworkId: 'nonexistent', userId: 'user-1', reason: '테스트' }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('비공개 작품 신고 시 404 에러를 던진다', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue({
+        id: 'artwork-1', userId: 'owner-1', status: 'COMPLETED', isPublic: false,
+      });
+
+      await expect(
+        reportArtwork({ artworkId: 'artwork-1', userId: 'user-1', reason: '테스트' }),
+      ).rejects.toMatchObject({ status: 404 });
     });
   });
 });

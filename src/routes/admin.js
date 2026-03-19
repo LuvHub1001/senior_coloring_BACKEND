@@ -95,4 +95,8 @@ router.post('/notices', adminWriteLimiter, validate(validators.createNotice), co
 router.put('/notices/:id', adminWriteLimiter, validate(validators.updateNotice), controller.updateNotice);
 router.delete('/notices/:id', adminWriteLimiter, validate(validators.deleteNotice), controller.deleteNotice);
 
+// 신고 관리
+router.get('/reports', adminReadLimiter, validate(validators.listReports), controller.listReports);
+router.put('/reports/:reportId', adminWriteLimiter, validate(validators.updateReport), controller.updateReport);
+
 module.exports = router;

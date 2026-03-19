@@ -1,6 +1,7 @@
 const prisma = require('../config/prisma');
 const { MemoryCache } = require('../utils/cache');
 const { createNotification } = require('./notification');
+const { statsCache } = require('./artwork');
 
 // 인기 작품 캐시 (TTL 5분)
 const popularCache = new MemoryCache(5 * 60 * 1000);
@@ -140,32 +141,56 @@ async function getPopularArtworks({ size, userId }) {
 
 // 작품 상세 조회
 async function getCommunityArtworkDetail({ artworkId, userId }) {
-  const artwork = await prisma.artwork.findUnique({
-    where: { id: artworkId },
-    select: {
-      id: true,
-      title: true,
-      imageUrl: true,
-      likeCount: true,
-      createdAt: true,
-      status: true,
-      isPublic: true,
-      design: { select: { id: true, title: true, imageUrl: true } },
-      user: { select: { id: true, nickname: true } },
-      ...(userId && {
-        likes: {
-          where: { userId },
-          select: { id: true },
+  const [artwork, lastLikeRecord] = await Promise.all([
+    prisma.artwork.findUnique({
+      where: { id: artworkId },
+      select: {
+        id: true,
+        title: true,
+        imageUrl: true,
+        likeCount: true,
+        createdAt: true,
+        status: true,
+        isPublic: true,
+        design: { select: { id: true, title: true, imageUrl: true } },
+        user: {
+          select: {
+            id: true,
+            nickname: true,
+            avatarUrl: true,
+            ...(userId && {
+              followers: {
+                where: { followerId: userId },
+                select: { id: true },
+              },
+            }),
+          },
         },
-      }),
-    },
-  });
+        ...(userId && {
+          likes: {
+            where: { userId },
+            select: { id: true },
+          },
+        }),
+      },
+    }),
+    // 마지막 좋아요 유저 조회
+    prisma.communityLike.findFirst({
+      where: { artworkId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        user: { select: { id: true, nickname: true, avatarUrl: true } },
+      },
+    }),
+  ]);
 
   if (!artwork || artwork.status !== 'COMPLETED' || !artwork.isPublic) {
     const error = new Error('작품을 찾을 수 없습니다.');
     error.status = 404;
     throw error;
   }
+
+  const isOwnArtwork = userId ? artwork.user.id === userId : false;
 
   return {
     artworkId: artwork.id,
@@ -174,10 +199,20 @@ async function getCommunityArtworkDetail({ artworkId, userId }) {
     author: {
       id: artwork.user.id,
       nickname: artwork.user.nickname,
+      avatarUrl: artwork.user.avatarUrl || null,
     },
     likeCount: artwork.likeCount,
     isLiked: userId ? artwork.likes?.length > 0 : false,
+    isFollowing: userId && !isOwnArtwork ? artwork.user.followers?.length > 0 : false,
     createdAt: artwork.createdAt,
+    isOwnArtwork,
+    lastLiker: lastLikeRecord
+      ? {
+          id: lastLikeRecord.user.id,
+          nickname: lastLikeRecord.user.nickname,
+          avatarUrl: lastLikeRecord.user.avatarUrl || null,
+        }
+      : null,
     design: {
       id: artwork.design.id,
       title: artwork.design.title,
@@ -225,6 +260,7 @@ async function toggleLike({ artworkId, userId }) {
     ]);
 
     countCache.invalidate('community');
+    statsCache.invalidate(`stats_${artwork.userId}`);
     return { isLiked: false, likeCount: updated.likeCount };
   }
 
@@ -242,18 +278,60 @@ async function toggleLike({ artworkId, userId }) {
 
   // 본인 작품이 아닌 경우에만 알림 생성
   if (artwork.userId !== userId) {
+    const [liker] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { nickname: true } }),
+    ]);
     const artworkTitle = artwork.title || artwork.design.title;
+    const nickname = liker?.nickname || '알 수 없는 사용자';
     createNotification({
       userId: artwork.userId,
       targetUserId: userId,
       type: 'like',
       title: '좋아요',
-      message: `'${artworkTitle}' 작품을 좋아했어요`,
+      message: `${nickname}님이 내 작품 '${artworkTitle}'을 좋아해요`,
+      artworkId: artwork.id,
     });
   }
 
   countCache.invalidate('community');
+  statsCache.invalidate(`stats_${artwork.userId}`);
   return { isLiked: true, likeCount: updated.likeCount };
+}
+
+// 작품 신고
+async function reportArtwork({ artworkId, userId, reason }) {
+  // 작품 존재 + 공개 확인
+  const artwork = await prisma.artwork.findUnique({
+    where: { id: artworkId },
+    select: { id: true, userId: true, status: true, isPublic: true },
+  });
+
+  if (!artwork || artwork.status !== 'COMPLETED' || !artwork.isPublic) {
+    const error = new Error('작품을 찾을 수 없습니다.');
+    error.status = 404;
+    throw error;
+  }
+
+  // 자기 작품 신고 방지
+  if (artwork.userId === userId) {
+    const error = new Error('본인 작품은 신고할 수 없습니다.');
+    error.status = 400;
+    throw error;
+  }
+
+  // 중복 신고 방지
+  try {
+    await prisma.artworkReport.create({
+      data: { artworkId, reporterId: userId, reason },
+    });
+  } catch (err) {
+    if (err.code === 'P2002') {
+      const error = new Error('이미 신고한 작품입니다.');
+      error.status = 409;
+      throw error;
+    }
+    throw err;
+  }
 }
 
 module.exports = {
@@ -261,6 +339,7 @@ module.exports = {
   getPopularArtworks,
   getCommunityArtworkDetail,
   toggleLike,
+  reportArtwork,
   popularCache,
   countCache,
 };

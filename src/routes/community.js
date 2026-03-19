@@ -1,8 +1,8 @@
 const express = require('express');
 const { authenticate, optionalAuth } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
-const { listCommunityArtworks, popularCommunityArtworks, communityArtworkParams } = require('../validators/community');
-const { list, popular, detail, toggleLike } = require('../controllers/community');
+const { listCommunityArtworks, popularCommunityArtworks, communityArtworkParams, reportArtwork } = require('../validators/community');
+const { list, popular, detail, toggleLike, report } = require('../controllers/community');
 
 const router = express.Router();
 
@@ -17,5 +17,8 @@ router.get('/artworks/:artworkId', optionalAuth, validate(communityArtworkParams
 
 // 좋아요 토글 (로그인 필수)
 router.post('/artworks/:artworkId/like', authenticate, validate(communityArtworkParams), toggleLike);
+
+// 작품 신고 (로그인 필수)
+router.post('/artworks/:artworkId/report', authenticate, validate(reportArtwork), report);
 
 module.exports = router;

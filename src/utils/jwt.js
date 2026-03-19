@@ -70,11 +70,20 @@ async function rotateTokens(refreshToken) {
     throw error;
   }
 
-  // 기존 토큰을 '사용됨'으로 마킹 (삭제하지 않음 — 재사용 감지에 필요)
-  await prisma.refreshToken.update({
-    where: { id: stored.id },
+  // 원자적 업데이트: usedAt이 null인 경우에만 마킹 (동시 요청 Race Condition 방지)
+  const { count } = await prisma.refreshToken.updateMany({
+    where: { id: stored.id, usedAt: null },
     data: { usedAt: new Date() },
   });
+
+  if (count === 0) {
+    // 다른 요청이 먼저 사용함 → 동시 사용 감지
+    logger.warn('Refresh token 동시 사용 감지', { userId: stored.userId, family: stored.family });
+    await prisma.refreshToken.deleteMany({ where: { userId: stored.userId } });
+    const error = new Error('비정상적인 토큰 사용이 감지되어 모든 세션이 만료되었습니다.');
+    error.statusCode = 401;
+    throw error;
+  }
 
   // 같은 family로 새 토큰 쌍 발급
   const accessToken = generateToken(stored.user);

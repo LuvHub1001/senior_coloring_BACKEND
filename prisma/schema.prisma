@@ -39,6 +39,7 @@ model User {
   featuredArtworkId   String?  @unique @map("featured_artwork_id")
   totalCompletedCount Int      @default(0) @map("total_completed_count") // 누적 완성 작품 수 (삭제해도 감소하지 않음)
   followerCount       Int      @default(0) @map("follower_count") // 팔로워 수 (비정규화)
+  nicknameChangedAt   DateTime? @map("nickname_changed_at") // 마지막 닉네임 변경 시점 (7일 쿨다운)
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
@@ -52,6 +53,7 @@ model User {
   following      Follow[]    @relation("Follower")  // 내가 팔로우하는 사람들
   notifications       Notification[]  @relation("NotificationRecipient")
   notificationTargets Notification[]  @relation("NotificationTarget")
+  artworkReports      ArtworkReport[]
 
   @@unique([provider, providerId])
   @@map("users")
@@ -91,11 +93,13 @@ model Artwork {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  user         User          @relation(fields: [userId], references: [id])
-  design       Design        @relation(fields: [designId], references: [id])
-  exhibition   Exhibition?
-  featuredBy   User?         @relation("FeaturedArtwork")
-  likes        CommunityLike[]
+  user          User          @relation(fields: [userId], references: [id])
+  design        Design        @relation(fields: [designId], references: [id])
+  exhibition    Exhibition?
+  featuredBy    User?         @relation("FeaturedArtwork")
+  likes         CommunityLike[]
+  notifications Notification[]
+  reports       ArtworkReport[]
 
   @@index([userId, status])
   @@index([designId])
@@ -193,11 +197,30 @@ model Follow {
   @@map("follows")
 }
 
+// 작품 신고
+model ArtworkReport {
+  id         String       @id @default(uuid())
+  artworkId  String       @map("artwork_id")
+  reporterId String       @map("reporter_id")
+  reason     String
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  artwork  Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  reporter User    @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([artworkId, reporterId])
+  @@index([artworkId])
+  @@index([status])
+  @@map("artwork_reports")
+}
+
 // 알림
 model Notification {
   id           String           @id @default(uuid())
   userId       String           @map("user_id") // 알림 수신자
   targetUserId String           @map("target_user_id") // 알림 관련 대상 사용자
+  artworkId    String?          @map("artwork_id") // 관련 작품 (like, artwork 타입)
   type         NotificationType
   title        String
   message      String
@@ -206,6 +229,7 @@ model Notification {
 
   user       User @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
   targetUser User @relation("NotificationTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  artwork    Artwork? @relation(fields: [artworkId], references: [id], onDelete: SetNull)
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
@@ -226,6 +250,12 @@ enum ArtworkStatus {
 enum ToggleType {
   LIGHT
   DARK
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
 }
 
 enum Role {

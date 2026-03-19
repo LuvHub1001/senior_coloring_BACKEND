@@ -1,6 +1,12 @@
 const prisma = require('../config/prisma');
 const { uploadFile, generateFileName } = require('../utils/storage');
+const { MemoryCache } = require('../utils/cache');
 const BUCKET_NAME = 'designs';
+
+// 도안 목록 캐시 (TTL 30분 — 도안은 자주 변경되지 않음)
+const designCache = new MemoryCache(30 * 60 * 1000);
+// 카테고리 목록 캐시 (TTL 30분)
+const categoryCache = new MemoryCache(30 * 60 * 1000);
 
 // Supabase Storage에 파일 업로드 후 공개 URL 반환
 async function uploadToStorage(file) {
@@ -30,17 +36,36 @@ async function createDesign({ title, category, description, file, originalFile }
     },
   });
 
+  // 도안 생성 시 캐시 무효화
+  designCache.clear();
+  categoryCache.clear();
+
   return design;
 }
 
 // 도안 목록 조회
 async function getDesigns({ category } = {}) {
+  const cacheKey = `designs_${category || 'all'}`;
+  const cached = designCache.get(cacheKey);
+  if (cached) return cached;
+
   const where = category ? { category } : {};
 
-  return prisma.design.findMany({
+  const designs = await prisma.design.findMany({
     where,
+    select: {
+      id: true,
+      title: true,
+      category: true,
+      description: true,
+      imageUrl: true,
+      createdAt: true,
+    },
     orderBy: { createdAt: 'desc' },
   });
+
+  designCache.set(cacheKey, designs);
+  return designs;
 }
 
 // 도안 상세 조회
@@ -58,13 +83,18 @@ async function getDesignById(id) {
 
 // 카테고리 목록 조회
 async function getCategories() {
+  const cached = categoryCache.get('categories');
+  if (cached) return cached;
+
   const results = await prisma.design.findMany({
     select: { category: true },
     distinct: ['category'],
     orderBy: { category: 'asc' },
   });
 
-  return results.map((r) => r.category);
+  const categories = results.map((r) => r.category);
+  categoryCache.set('categories', categories);
+  return categories;
 }
 
-module.exports = { createDesign, getDesigns, getDesignById, getCategories };
+module.exports = { createDesign, getDesigns, getDesignById, getCategories, designCache, categoryCache };

@@ -25,6 +25,18 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  // 닉네임 변경 쿨다운 에러 (availableAt 포함)
+  if (err.code === 'NICKNAME_CHANGE_COOLDOWN') {
+    return res.status(statusCode).json({
+      success: false,
+      error: {
+        code: 'NICKNAME_CHANGE_COOLDOWN',
+        message: err.message,
+        availableAt: err.availableAt,
+      },
+    });
+  }
+
   res.status(statusCode).json({
     success: false,
     error: statusCode === 500 && isProduction
