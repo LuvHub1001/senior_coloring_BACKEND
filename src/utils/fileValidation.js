@@ -10,7 +10,7 @@ const ALLOWED_IMAGE_TYPES = new Set([
 // SVG에서 위험한 태그/속성 패턴 (XSS 방지)
 const SVG_DANGEROUS_PATTERNS = [
   /<script[\s>]/i,
-  /on\w+\s*=/i,                   // onclick, onerror 등 이벤트 핸들러
+  /\son\w+\s*=/i,                  // onclick, onerror 등 이벤트 핸들러 (속성이므로 앞에 공백 필수)
   /javascript\s*:/i,
   /<iframe[\s>]/i,
   /<embed[\s>]/i,
