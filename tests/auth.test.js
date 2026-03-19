@@ -33,7 +33,7 @@ describe('authenticate 미들웨어', () => {
 
   test('httpOnly 쿠키의 토큰으로 인증한다', () => {
     const token = generateToken(validUser);
-    const { req, res, next } = createMockReqRes({ cookies: { token } });
+    const { req, res, next } = createMockReqRes({ cookies: { accessToken: token } });
 
     authenticate(req, res, next);
 
@@ -45,7 +45,7 @@ describe('authenticate 미들웨어', () => {
     const cookieUser = { id: 'cookie-user', email: 'cookie@test.com' };
     const headerUser = { id: 'header-user', email: 'header@test.com' };
     const { req, res, next } = createMockReqRes({
-      cookies: { token: generateToken(cookieUser) },
+      cookies: { accessToken: generateToken(cookieUser) },
       authHeader: `Bearer ${generateToken(headerUser)}`,
     });
 
@@ -126,7 +126,7 @@ describe('optionalAuth 미들웨어', () => {
 
   test('유효한 쿠키 토큰이면 req.user를 설정한다', () => {
     const token = generateToken(validUser);
-    const { req, res, next } = createMockReqRes({ cookies: { token } });
+    const { req, res, next } = createMockReqRes({ cookies: { accessToken: token } });
 
     optionalAuth(req, res, next);
 
@@ -135,7 +135,7 @@ describe('optionalAuth 미들웨어', () => {
   });
 
   test('잘못된 토큰이면 req.user를 null로 설정하고 계속 진행한다', () => {
-    const { req, res, next } = createMockReqRes({ cookies: { token: 'invalid' } });
+    const { req, res, next } = createMockReqRes({ cookies: { accessToken: 'invalid' } });
 
     optionalAuth(req, res, next);
 

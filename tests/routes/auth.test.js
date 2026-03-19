@@ -57,7 +57,7 @@ describe('Auth Routes', () => {
       const cookies = res.headers['set-cookie'];
       expect(cookies).toBeDefined();
       const cookieStr = cookies.join('; ');
-      expect(cookieStr).toContain('token=');
+      expect(cookieStr).toContain('accessToken=');
       expect(cookieStr).toContain('refreshToken=');
       expect(cookieStr).toContain('HttpOnly');
     });
@@ -159,7 +159,7 @@ describe('Auth Routes', () => {
 
       const res = await request(app)
         .post('/api/auth/logout')
-        .set('Cookie', [`token=${token}`]);
+        .set('Cookie', [`accessToken=${token}`]);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -167,12 +167,12 @@ describe('Auth Routes', () => {
         where: { userId: 'user-1' },
       });
 
-      // 쿠키 제거 확인
+      // 쿠키 제거 확인 (maxAge=0)
       const cookies = res.headers['set-cookie'];
       expect(cookies).toBeDefined();
       const cookieStr = cookies.join('; ');
-      expect(cookieStr).toContain('token=;');
-      expect(cookieStr).toContain('refreshToken=;');
+      expect(cookieStr).toContain('accessToken=');
+      expect(cookieStr).toContain('refreshToken=');
     });
 
     test('인증 없이 로그아웃 요청하면 401을 반환한다', async () => {

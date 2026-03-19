@@ -278,9 +278,7 @@ async function toggleLike({ artworkId, userId }) {
 
   // 본인 작품이 아닌 경우에만 알림 생성
   if (artwork.userId !== userId) {
-    const [liker] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId }, select: { nickname: true } }),
-    ]);
+    const liker = await prisma.user.findUnique({ where: { id: userId }, select: { nickname: true } });
     const artworkTitle = artwork.title || artwork.design.title;
     const nickname = liker?.nickname || '알 수 없는 사용자';
     createNotification({

@@ -5,8 +5,8 @@ const logger = require('../config/logger');
 // 요청에서 access token 추출 (쿠키 우선, Bearer 헤더 fallback)
 function extractToken(req) {
   // 1. httpOnly 쿠키
-  if (req.cookies?.token) {
-    return req.cookies.token;
+  if (req.cookies?.accessToken) {
+    return req.cookies.accessToken;
   }
   // 2. Authorization: Bearer (전환 기간 호환)
   const authHeader = req.headers.authorization;

@@ -99,8 +99,13 @@ app.use(
 // Passport 초기화
 app.use(passport.initialize());
 
-// 전역 Rate Limiting
-app.use('/api', apiLimiter);
+// 전역 Rate Limiting (E2E 테스트 로그인은 제외)
+app.use('/api', (req, res, next) => {
+  if (req.path === '/auth/test-login' && process.env.NODE_ENV !== 'production') {
+    return next();
+  }
+  return apiLimiter(req, res, next);
+});
 
 // 헬스체크 (DB 연결 상태 포함)
 app.get('/health', async (req, res) => {

@@ -141,7 +141,7 @@ describe('통합 워크플로우: 인증 흐름', () => {
     expect(cookies).toBeDefined();
 
     // 2. 새 Access Token으로 API 호출 (쿠키에서 추출)
-    const accessTokenCookie = cookies.find(c => c.startsWith('token='));
+    const accessTokenCookie = cookies.find(c => c.startsWith('accessToken='));
     const accessTokenValue = accessTokenCookie.split(';')[0].split('=')[1];
 
     mockPrisma.user.findUnique.mockResolvedValue({
@@ -152,7 +152,7 @@ describe('통합 워크플로우: 인증 흐름', () => {
 
     await request(app)
       .get('/api/users/me')
-      .set('Cookie', [`token=${accessTokenValue}`])
+      .set('Cookie', [`accessToken=${accessTokenValue}`])
       .expect(200);
 
     // 3. 로그아웃
@@ -160,7 +160,7 @@ describe('통합 워크플로우: 인증 흐름', () => {
 
     await request(app)
       .post('/api/auth/logout')
-      .set('Cookie', [`token=${accessTokenValue}`])
+      .set('Cookie', [`accessToken=${accessTokenValue}`])
       .expect(200);
   });
 });

@@ -1,3 +1,4 @@
+const path = require('path');
 const prisma = require('../config/prisma');
 const { uploadFile, removeFile } = require('../utils/storage');
 const { MemoryCache } = require('../utils/cache');
@@ -48,7 +49,7 @@ async function createArtwork({ userId, designId, rootArtworkId }) {
       rootArtworkId: resolvedRootId,
       status: 'IN_PROGRESS',
     },
-    include: { design: true },
+    include: { design: { select: { id: true, title: true, imageUrl: true, category: true } } },
   });
 }
 
@@ -57,7 +58,7 @@ async function saveArtwork({ artworkId, userId, file, progress }) {
   const artwork = await getOwnArtwork(artworkId, userId);
 
   // Supabase Storage에 이미지 업로드
-  const ext = require('path').extname(file.originalname);
+  const ext = path.extname(file.originalname);
   const fileName = `${userId}/${artworkId}_${Date.now()}${ext}`;
 
   const publicUrl = await uploadFile(BUCKET_NAME, fileName, file.buffer, file.mimetype, { upsert: true });
@@ -75,7 +76,7 @@ async function saveArtwork({ artworkId, userId, file, progress }) {
   return prisma.artwork.update({
     where: { id: artworkId },
     data: updateData,
-    include: { design: true },
+    include: { design: { select: { id: true, title: true, imageUrl: true, category: true } } },
   });
 }
 

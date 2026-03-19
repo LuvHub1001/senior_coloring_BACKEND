@@ -4,11 +4,47 @@ const { generateToken, generateRefreshToken, rotateTokens, revokeAllTokens } = r
 const { setTokenCookies, clearTokenCookies } = require('../utils/cookie');
 const { authenticate } = require('../middlewares/auth');
 const { authLimiter } = require('../middlewares/rateLimiter');
+const prisma = require('../config/prisma');
 const logger = require('../config/logger');
 
 const router = express.Router();
 
-// 인증 라우트에 rate limiting 적용
+// E2E 테스트 전용 로그인 (rate limit 제외 — 프로덕션 비활성화 + 화이트리스트로 보호)
+const TEST_ALLOWED_EMAILS = ['e2e-test@artispace.co.kr', 'admin@artispace.co.kr'];
+
+router.post('/test-login', async (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ success: false, error: 'Not Found' });
+  }
+
+  try {
+    const { email } = req.body;
+
+    if (!email || !TEST_ALLOWED_EMAILS.includes(email)) {
+      return res.status(403).json({ success: false, error: '허용되지 않은 테스트 계정입니다.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, role: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: '테스트 계정이 등록되지 않았습니다. prisma db seed를 실행해주세요.' });
+    }
+
+    const accessToken = generateToken(user);
+    const refresh = await generateRefreshToken(user.id);
+
+    setTokenCookies(res, accessToken, refresh.token);
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 인증 라우트에 rate limiting 적용 (test-login 이후에 선언하여 제외)
 router.use(authLimiter);
 
 // 프론트엔드 콜백 URL 생성 헬퍼
@@ -115,42 +151,6 @@ router.post('/refresh', async (req, res, next) => {
     if (err.statusCode === 401) {
       clearTokenCookies(res);
     }
-    next(err);
-  }
-});
-
-// E2E 테스트 전용 로그인 (프로덕션 비활성화)
-const TEST_ALLOWED_EMAILS = ['e2e-test@artispace.co.kr', 'admin@artispace.co.kr'];
-
-router.post('/test-login', async (req, res, next) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({ success: false, error: 'Not Found' });
-  }
-
-  try {
-    const { email } = req.body;
-
-    if (!email || !TEST_ALLOWED_EMAILS.includes(email)) {
-      return res.status(403).json({ success: false, error: '허용되지 않은 테스트 계정입니다.' });
-    }
-
-    const prisma = require('../config/prisma');
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, email: true, role: true },
-    });
-
-    if (!user) {
-      return res.status(404).json({ success: false, error: '테스트 계정이 등록되지 않았습니다. prisma db seed를 실행해주세요.' });
-    }
-
-    const accessToken = generateToken(user);
-    const refresh = await generateRefreshToken(user.id);
-
-    setTokenCookies(res, accessToken, refresh.token);
-
-    res.json({ success: true });
-  } catch (err) {
     next(err);
   }
 });

@@ -1,12 +1,12 @@
 const isProduction = process.env.NODE_ENV === 'production';
 
 const ACCESS_TOKEN_MAX_AGE = 60 * 60 * 1000; // 1시간
-const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30일
+const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7일
 
 const COOKIE_BASE = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: 'lax', // 같은 사이트(artispace.co.kr) 내 크로스 오리진 대응 + CSRF 방어
+  sameSite: 'lax',
 };
 
 const ACCESS_TOKEN_COOKIE = {
@@ -17,20 +17,20 @@ const ACCESS_TOKEN_COOKIE = {
 
 const REFRESH_TOKEN_COOKIE = {
   ...COOKIE_BASE,
-  path: '/api/auth',
+  path: '/',
   maxAge: REFRESH_TOKEN_MAX_AGE,
 };
 
 // 토큰 쿠키 설정
 function setTokenCookies(res, accessToken, refreshToken) {
-  res.cookie('token', accessToken, ACCESS_TOKEN_COOKIE);
+  res.cookie('accessToken', accessToken, ACCESS_TOKEN_COOKIE);
   res.cookie('refreshToken', refreshToken, REFRESH_TOKEN_COOKIE);
 }
 
-// 토큰 쿠키 제거
+// 토큰 쿠키 제거 (maxAge: 0으로 즉시 만료)
 function clearTokenCookies(res) {
-  res.clearCookie('token', { path: ACCESS_TOKEN_COOKIE.path });
-  res.clearCookie('refreshToken', { path: REFRESH_TOKEN_COOKIE.path });
+  res.cookie('accessToken', '', { httpOnly: true, path: '/', maxAge: 0 });
+  res.cookie('refreshToken', '', { httpOnly: true, path: '/', maxAge: 0 });
 }
 
 module.exports = {

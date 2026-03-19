@@ -110,7 +110,7 @@ describe('Artwork Service', () => {
 
       expect(mockPrisma.artwork.create).toHaveBeenCalledWith({
         data: { userId: 'user-1', designId: 1, rootArtworkId: 'root-1', status: 'IN_PROGRESS' },
-        include: { design: true },
+        include: { design: { select: { id: true, title: true, imageUrl: true, category: true } } },
       });
       expect(result.rootArtworkId).toBe('root-1');
     });
@@ -129,7 +129,7 @@ describe('Artwork Service', () => {
 
       expect(mockPrisma.artwork.create).toHaveBeenCalledWith({
         data: { userId: 'user-1', designId: 1, rootArtworkId: 'child-1', status: 'IN_PROGRESS' },
-        include: { design: true },
+        include: { design: { select: { id: true, title: true, imageUrl: true, category: true } } },
       });
       expect(result.rootArtworkId).toBe('child-1');
     });
