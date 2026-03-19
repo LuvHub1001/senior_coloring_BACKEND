@@ -21,6 +21,11 @@ const server = app.listen(PORT, () => {
 // 요청 타임아웃 설정 (60초)
 server.timeout = 60000;
 
+// Keep-alive 타임아웃 (Railway 프록시 호환)
+// Railway 프록시보다 길게 설정해야 간헐적 522 방지
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
+
 // Graceful Shutdown
 let isShuttingDown = false;
 
