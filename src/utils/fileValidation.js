@@ -16,7 +16,7 @@ const SVG_DANGEROUS_PATTERNS = [
   /<embed[\s>]/i,
   /<object[\s>]/i,
   /<foreignObject[\s>]/i,
-  /xlink:href\s*=\s*["'](?!#)/i,  // 외부 참조 (내부 #ref는 허용)
+  /xlink:href\s*=\s*["'](?!#|data:image\/)/i,  // 외부 참조 차단 (내부 #ref, data:image/* Base64 임베딩은 허용)
   /href\s*=\s*["']javascript:/i,
   /<use[^>]+href\s*=\s*["'](?!#)/i,
   /<!\[CDATA\[/i,                  // CDATA 블록 (스크립트 우회 방지)
