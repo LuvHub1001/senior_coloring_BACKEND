@@ -11,6 +11,7 @@ const mockPrisma = {
   communityLike: {
     findUnique: jest.fn(),
     findFirst: jest.fn(),
+    findMany: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
     deleteMany: jest.fn(),
@@ -116,9 +117,9 @@ describe('Community Service', () => {
     });
 
     it('로그인 사용자의 좋아요 상태를 포함한다', async () => {
-      const artworkWithLike = { ...mockArtwork, likes: [{ id: 'like-1' }] };
-      mockPrisma.artwork.findMany.mockResolvedValue([artworkWithLike]);
+      mockPrisma.artwork.findMany.mockResolvedValue([mockArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
+      mockPrisma.communityLike.findMany.mockResolvedValue([{ artworkId: mockArtwork.id }]);
 
       const result = await getCommunityArtworks({
         sort: 'recent',

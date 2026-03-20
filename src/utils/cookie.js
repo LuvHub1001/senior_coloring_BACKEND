@@ -1,12 +1,12 @@
 const isProduction = process.env.NODE_ENV === 'production';
 
 const ACCESS_TOKEN_MAX_AGE = 60 * 60 * 1000; // 1시간
-const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7일
+const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30일 (DB 만료와 일치)
 
 const COOKIE_BASE = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: 'lax',
+  sameSite: isProduction ? 'strict' : 'lax', // 프로덕션: strict (CSRF 강화)
 };
 
 const ACCESS_TOKEN_COOKIE = {

@@ -239,6 +239,7 @@ describe('Artwork Routes', () => {
       };
       mockPrisma.artwork.findMany.mockResolvedValue([publishedArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
+      mockPrisma.communityLike.findMany.mockResolvedValue([]);
 
       const res = await request(app)
         .get('/api/artworks/published?page=1&size=20')

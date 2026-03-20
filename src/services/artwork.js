@@ -227,11 +227,13 @@ async function deleteArtwork({ artworkId, userId }) {
   });
 }
 
-// 본인 작품 조회 (공통 검증, includeDesign으로 JOIN 제어)
+// 본인 작품 조회 (공통 검증, includeDesign으로 JOIN 제어 — 필요한 필드만 select)
 async function getOwnArtwork(artworkId, userId, { includeDesign = true } = {}) {
   const artwork = await prisma.artwork.findUnique({
     where: { id: artworkId },
-    ...(includeDesign && { include: { design: true } }),
+    ...(includeDesign && {
+      include: { design: { select: { id: true, title: true, imageUrl: true, category: true } } },
+    }),
   });
 
   if (!artwork) {
@@ -358,10 +360,6 @@ async function getPublishedArtworks({ userId, sort, page, size }) {
         createdAt: true,
         publishedAt: true,
         design: { select: { title: true } },
-        likes: {
-          where: { userId },
-          select: { id: true },
-        },
       },
       orderBy,
       skip,
@@ -369,6 +367,19 @@ async function getPublishedArtworks({ userId, sort, page, size }) {
     }),
     prisma.artwork.count({ where }),
   ]);
+
+  // 좋아요 여부를 배치로 조회 (작품별 서브쿼리 N개 → 단일 IN 쿼리 1개)
+  let likedSet = new Set();
+  if (artworks.length > 0) {
+    const likedRecords = await prisma.communityLike.findMany({
+      where: {
+        userId,
+        artworkId: { in: artworks.map((a) => a.id) },
+      },
+      select: { artworkId: true },
+    });
+    likedSet = new Set(likedRecords.map((l) => l.artworkId));
+  }
 
   const totalPages = Math.ceil(totalCount / size);
 
@@ -378,7 +389,7 @@ async function getPublishedArtworks({ userId, sort, page, size }) {
       title: a.title || a.design.title,
       imageUrl: a.imageUrl,
       likeCount: a.likeCount,
-      isLiked: a.likes?.length > 0,
+      isLiked: likedSet.has(a.id),
       createdAt: a.createdAt,
       publishedAt: a.publishedAt,
     })),

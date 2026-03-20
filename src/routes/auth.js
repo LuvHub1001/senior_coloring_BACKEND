@@ -1,26 +1,40 @@
 const express = require('express');
 const passport = require('passport');
+const { z } = require('zod');
 const { generateToken, generateRefreshToken, rotateTokens, revokeAllTokens } = require('../utils/jwt');
 const { setTokenCookies, clearTokenCookies } = require('../utils/cookie');
 const { authenticate } = require('../middlewares/auth');
-const { authLimiter } = require('../middlewares/rateLimiter');
+const { validate } = require('../middlewares/validate');
+const { authLimiter, refreshLimiter } = require('../middlewares/rateLimiter');
 const prisma = require('../config/prisma');
 const logger = require('../config/logger');
 
 const router = express.Router();
 
-// E2E 테스트 전용 로그인 (rate limit 제외 — 프로덕션 비활성화 + 화이트리스트로 보호)
-const TEST_ALLOWED_EMAILS = ['e2e-test@artispace.co.kr', 'admin@artispace.co.kr'];
+// E2E 테스트 전용 로그인 — 프로덕션 비활성화 + 시크릿 검증 + Zod 검증
+const TEST_ALLOWED_EMAILS = (process.env.TEST_LOGIN_EMAILS || 'e2e-test@artispace.co.kr,admin@artispace.co.kr').split(',').map((e) => e.trim());
 
-router.post('/test-login', async (req, res, next) => {
+const testLoginSchema = z.object({
+  body: z.object({
+    email: z.string().email('올바른 이메일 형식이 아닙니다.'),
+    secret: z.string().min(1, 'secret은 필수입니다.'),
+  }),
+});
+
+router.post('/test-login', validate(testLoginSchema), async (req, res, next) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(404).json({ success: false, error: 'Not Found' });
   }
 
   try {
-    const { email } = req.body;
+    const { email, secret } = req.body;
 
-    if (!email || !TEST_ALLOWED_EMAILS.includes(email)) {
+    // 시크릿 키 검증 (환경변수 미설정 시 test-login 완전 차단)
+    if (!process.env.TEST_LOGIN_SECRET || secret !== process.env.TEST_LOGIN_SECRET) {
+      return res.status(403).json({ success: false, error: '허용되지 않은 요청입니다.' });
+    }
+
+    if (!TEST_ALLOWED_EMAILS.includes(email)) {
       return res.status(403).json({ success: false, error: '허용되지 않은 테스트 계정입니다.' });
     }
 
@@ -129,7 +143,7 @@ router.get('/naver', passport.authenticate('naver'));
 router.get('/naver/callback', createOAuthCallbackHandler('naver'));
 
 // 토큰 갱신 (쿠키 기반 — refreshToken 쿠키에서 읽고, 새 토큰을 쿠키로 설정)
-router.post('/refresh', async (req, res, next) => {
+router.post('/refresh', refreshLimiter, async (req, res, next) => {
   try {
     // 쿠키 우선, body fallback (전환 기간 호환)
     const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;

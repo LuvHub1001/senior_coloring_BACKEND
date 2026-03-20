@@ -3,7 +3,7 @@ const { z } = require('zod');
 const paginationQuery = {
   page: z.coerce.number().int().positive().max(200, '페이지는 최대 200까지 조회 가능합니다.').default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  search: z.string().max(100).optional(),
+  search: z.string().trim().min(1).max(100).optional(),
 };
 
 const listDesigns = z.object({

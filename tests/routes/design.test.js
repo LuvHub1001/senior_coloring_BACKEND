@@ -37,6 +37,13 @@ const mockDesign = {
   createdAt: new Date().toISOString(),
 };
 
+// 최소 유효 1x1 PNG (매직 바이트 검증 통과용)
+const VALID_PNG = Buffer.from(
+  '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489' +
+  '0000000a49444154789c626000000002000198e195280000000049454e44ae426082',
+  'hex',
+);
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -118,7 +125,7 @@ describe('Design Routes', () => {
       const res = await request(app)
         .post('/api/designs')
         .set('Authorization', `Bearer ${token}`)
-        .attach('image', Buffer.from('fake-png'), { filename: 'test.png', contentType: 'image/png' })
+        .attach('image', VALID_PNG, { filename: 'test.png', contentType: 'image/png' })
         .field('category', '자연');
 
       expect(res.status).toBe(400);
@@ -130,7 +137,7 @@ describe('Design Routes', () => {
       const res = await request(app)
         .post('/api/designs')
         .set('Authorization', `Bearer ${token}`)
-        .attach('image', Buffer.from('fake-png'), { filename: 'test.png', contentType: 'image/png' })
+        .attach('image', VALID_PNG, { filename: 'test.png', contentType: 'image/png' })
         .field('title', '꽃 도안')
         .field('category', '자연');
 

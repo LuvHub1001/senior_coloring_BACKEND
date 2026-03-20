@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate, optionalAuth } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
+const { actionLimiter } = require('../middlewares/rateLimiter');
 const { listCommunityArtworks, popularCommunityArtworks, communityArtworkParams, reportArtwork } = require('../validators/community');
 const { list, popular, detail, toggleLike, report } = require('../controllers/community');
 
@@ -15,10 +16,10 @@ router.get('/artworks/popular', optionalAuth, validate(popularCommunityArtworks)
 // 작품 상세 조회 (비로그인 허용)
 router.get('/artworks/:artworkId', optionalAuth, validate(communityArtworkParams), detail);
 
-// 좋아요 토글 (로그인 필수)
-router.post('/artworks/:artworkId/like', authenticate, validate(communityArtworkParams), toggleLike);
+// 좋아요 토글 (로그인 필수, 스팸 방지)
+router.post('/artworks/:artworkId/like', authenticate, actionLimiter, validate(communityArtworkParams), toggleLike);
 
-// 작품 신고 (로그인 필수)
-router.post('/artworks/:artworkId/report', authenticate, validate(reportArtwork), report);
+// 작품 신고 (로그인 필수, 스팸 방지)
+router.post('/artworks/:artworkId/report', authenticate, actionLimiter, validate(reportArtwork), report);
 
 module.exports = router;

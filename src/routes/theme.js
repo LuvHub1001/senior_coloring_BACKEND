@@ -3,6 +3,7 @@ const multer = require('multer');
 const { authenticate } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
 const { uploadLimiter } = require('../middlewares/rateLimiter');
+const { validateUploadedFiles } = require('../middlewares/validateUpload');
 const { createTheme, selectTheme, themeParams } = require('../validators/theme');
 const { list, select, create, uploadImage } = require('../controllers/theme');
 
@@ -24,7 +25,7 @@ const upload = multer({
 router.use(authenticate);
 
 // 테마 생성 (배경 이미지)
-router.post('/', uploadLimiter, upload.single('image'), validate(createTheme), create);
+router.post('/', uploadLimiter, upload.single('image'), validateUploadedFiles, validate(createTheme), create);
 
 // 테마 목록 조회 (해금 여부 포함)
 router.get('/', list);
@@ -33,6 +34,6 @@ router.get('/', list);
 router.patch('/select', validate(selectTheme), select);
 
 // 테마 이미지 업로드 (관리용)
-router.put('/:id/image', uploadLimiter, upload.single('image'), validate(themeParams), uploadImage);
+router.put('/:id/image', uploadLimiter, upload.single('image'), validateUploadedFiles, validate(themeParams), uploadImage);
 
 module.exports = router;

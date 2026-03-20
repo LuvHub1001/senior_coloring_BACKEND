@@ -32,12 +32,6 @@ async function getCommunityArtworks({ sort, page, size, userId }) {
         createdAt: true,
         design: { select: { title: true } },
         user: { select: { id: true, nickname: true } },
-        ...(userId && {
-          likes: {
-            where: { userId },
-            select: { id: true },
-          },
-        }),
       },
       orderBy,
       skip,
@@ -48,6 +42,19 @@ async function getCommunityArtworks({ sort, page, size, userId }) {
   if (totalCount == null) {
     totalCount = freshCount;
     countCache.set('community', totalCount);
+  }
+
+  // 좋아요 여부를 배치로 조회 (작품별 서브쿼리 N개 → 단일 IN 쿼리 1개)
+  let likedSet = new Set();
+  if (userId && artworks.length > 0) {
+    const likedRecords = await prisma.communityLike.findMany({
+      where: {
+        userId,
+        artworkId: { in: artworks.map((a) => a.id) },
+      },
+      select: { artworkId: true },
+    });
+    likedSet = new Set(likedRecords.map((l) => l.artworkId));
   }
 
   const totalPages = Math.ceil(totalCount / size);
@@ -62,7 +69,7 @@ async function getCommunityArtworks({ sort, page, size, userId }) {
         nickname: a.user.nickname,
       },
       likeCount: a.likeCount,
-      isLiked: userId ? a.likes?.length > 0 : false,
+      isLiked: likedSet.has(a.id),
       createdAt: a.createdAt,
     })),
     page: page - 1, // 0-based page (프론트 무한스크롤 대응)
@@ -112,14 +119,21 @@ async function getPopularArtworks({ size, userId }) {
       createdAt: true,
       design: { select: { title: true } },
       user: { select: { id: true, nickname: true } },
-      ...(userId && {
-        likes: {
-          where: { userId },
-          select: { id: true },
-        },
-      }),
     },
   });
+
+  // 좋아요 여부를 배치로 조회
+  let likedSet = new Set();
+  if (userId && artworks.length > 0) {
+    const likedRecords = await prisma.communityLike.findMany({
+      where: {
+        userId,
+        artworkId: { in: artworks.map((a) => a.id) },
+      },
+      select: { artworkId: true },
+    });
+    likedSet = new Set(likedRecords.map((l) => l.artworkId));
+  }
 
   // 이번 주 좋아요 수 순서 유지
   const orderMap = new Map(ids.map((id, i) => [id, i]));
@@ -134,7 +148,7 @@ async function getPopularArtworks({ size, userId }) {
       nickname: a.user.nickname,
     },
     likeCount: a.likeCount,
-    isLiked: userId ? a.likes?.length > 0 : false,
+    isLiked: likedSet.has(a.id),
     createdAt: a.createdAt,
   }));
 }

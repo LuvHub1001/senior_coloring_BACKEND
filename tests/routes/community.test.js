@@ -56,10 +56,9 @@ describe('Community Routes', () => {
     });
 
     it('로그인 상태로 좋아요 여부를 포함하여 조회한다', async () => {
-      mockPrisma.artwork.findMany.mockResolvedValue([
-        { ...mockArtwork, likes: [{ id: 'like-1' }] },
-      ]);
+      mockPrisma.artwork.findMany.mockResolvedValue([mockArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
+      mockPrisma.communityLike.findMany.mockResolvedValue([{ artworkId: mockArtwork.id }]);
 
       const res = await request(app)
         .get('/api/community/artworks')

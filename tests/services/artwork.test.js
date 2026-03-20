@@ -15,7 +15,7 @@ const mockPrisma = {
   user: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
   theme: { findFirst: jest.fn() },
   exhibition: { deleteMany: jest.fn() },
-  communityLike: { deleteMany: jest.fn() },
+  communityLike: { deleteMany: jest.fn(), findMany: jest.fn() },
   $transaction: jest.fn((input) => Array.isArray(input) ? Promise.all(input) : input(mockPrisma)),
 };
 
@@ -517,12 +517,12 @@ describe('Artwork Service', () => {
       createdAt: new Date('2026-03-15'),
       publishedAt: new Date('2026-03-16'),
       design: { title: '꽃' },
-      likes: [{ id: 'like-1' }],
     };
 
     test('자랑한 작품 목록을 publishedAt 최신순으로 조회한다', async () => {
       mockPrisma.artwork.findMany.mockResolvedValue([publishedArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
+      mockPrisma.communityLike.findMany.mockResolvedValue([{ artworkId: 'artwork-1' }]);
 
       const result = await artworkService.getPublishedArtworks({
         userId: 'user-1',
@@ -575,6 +575,7 @@ describe('Artwork Service', () => {
       const noTitleArtwork = { ...publishedArtwork, title: null };
       mockPrisma.artwork.findMany.mockResolvedValue([noTitleArtwork]);
       mockPrisma.artwork.count.mockResolvedValue(1);
+      mockPrisma.communityLike.findMany.mockResolvedValue([]);
 
       const result = await artworkService.getPublishedArtworks({
         userId: 'user-1',

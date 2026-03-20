@@ -25,7 +25,7 @@ const reportArtwork = z.object({
     artworkId: z.string().uuid('유효한 작품 ID가 아닙니다.'),
   }),
   body: z.object({
-    reason: z.string().min(1, '신고 사유는 필수입니다.').max(500, '신고 사유는 500자 이하여야 합니다.'),
+    reason: z.string().trim().min(1, '신고 사유는 필수입니다.').max(500, '신고 사유는 500자 이하여야 합니다.'),
   }),
 });
 

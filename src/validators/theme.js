@@ -4,7 +4,7 @@ const createTheme = z.object({
   body: z.object({
     name: z.string().min(1, '테마 이름은 필수입니다.').max(50),
     requiredArtworks: z.coerce.number().int().min(0).default(0),
-    textColor: z.string().max(20).optional(),
+    textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, '올바른 HEX 색상 코드를 입력해주세요.').optional(),
     toggleType: z.enum(['LIGHT', 'DARK']).default('LIGHT'),
     sortOrder: z.coerce.number().int().min(0).default(0),
   }),

@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate, optionalAuth } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
+const { actionLimiter } = require('../middlewares/rateLimiter');
 const { updateNickname, updateProfile, userIdParams, listUserPublishedArtworks } = require('../validators/user');
 const { getMe, patchNickname, patchProfile, getUserProfilePublic, getUserPublished, follow, unfollow } = require('../controllers/user');
 
@@ -21,10 +22,10 @@ router.get('/:userId/profile', optionalAuth, validate(userIdParams), getUserProf
 // 타인의 자랑한 작품 목록 (비로그인 허용)
 router.get('/:userId/artworks/published', optionalAuth, validate(listUserPublishedArtworks), getUserPublished);
 
-// 팔로우 (로그인 필수)
-router.post('/:userId/follow', authenticate, validate(userIdParams), follow);
+// 팔로우 (로그인 필수, 스팸 방지)
+router.post('/:userId/follow', authenticate, actionLimiter, validate(userIdParams), follow);
 
-// 언팔로우 (로그인 필수)
-router.delete('/:userId/follow', authenticate, validate(userIdParams), unfollow);
+// 언팔로우 (로그인 필수, 스팸 방지)
+router.delete('/:userId/follow', authenticate, actionLimiter, validate(userIdParams), unfollow);
 
 module.exports = router;
