@@ -277,12 +277,30 @@ async function publishArtwork({ artworkId, userId, isPublic, title }) {
     throw error;
   }
 
-  const data = { isPublic };
+  const data = { isPublic, updatedAt: artwork.updatedAt };
   if (title !== undefined) data.title = title;
   if (isPublic) data.publishedAt = new Date();
 
   // 공개 상태 변경 시 통계 캐시 무효화
   statsCache.invalidate(`stats_${userId}`);
+
+  // 자랑 취소 시 좋아요 데이터 초기화 (트랜잭션)
+  if (!isPublic) {
+    data.likeCount = 0;
+
+    const [updated] = await prisma.$transaction([
+      prisma.artwork.update({
+        where: { id: artworkId },
+        data,
+        select: { id: true, isPublic: true, title: true, publishedAt: true },
+      }),
+      prisma.communityLike.deleteMany({
+        where: { artworkId },
+      }),
+    ]);
+
+    return { artworkId: updated.id, isPublic: updated.isPublic, title: updated.title, publishedAt: updated.publishedAt };
+  }
 
   const updated = await prisma.artwork.update({
     where: { id: artworkId },
@@ -324,7 +342,7 @@ async function getPublishedArtworks({ userId, sort, page, size }) {
   const where = { userId, status: 'COMPLETED', isPublic: true };
 
   const orderByMap = {
-    popular: [{ likeCount: 'desc' }, { publishedAt: 'desc' }],
+    likes: [{ likeCount: 'desc' }, { publishedAt: 'desc' }],
     oldest: [{ publishedAt: 'asc' }],
   };
   const orderBy = orderByMap[sort] || [{ publishedAt: 'desc' }];

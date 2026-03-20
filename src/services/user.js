@@ -190,7 +190,7 @@ async function getUserPublishedArtworks({ targetUserId, currentUserId, sort, pag
   const where = { userId: targetUserId, status: 'COMPLETED', isPublic: true };
 
   const orderByMap = {
-    popular: [{ likeCount: 'desc' }, { publishedAt: 'desc' }],
+    likes: [{ likeCount: 'desc' }, { publishedAt: 'desc' }],
     oldest: [{ publishedAt: 'asc' }],
   };
   const orderBy = orderByMap[sort] || [{ publishedAt: 'desc' }];

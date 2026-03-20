@@ -16,7 +16,7 @@ const mockPrisma = {
   theme: { findFirst: jest.fn() },
   exhibition: { deleteMany: jest.fn() },
   communityLike: { deleteMany: jest.fn() },
-  $transaction: jest.fn((fn) => fn(mockPrisma)),
+  $transaction: jest.fn((input) => Array.isArray(input) ? Promise.all(input) : input(mockPrisma)),
 };
 
 jest.mock('@prisma/client', () => ({
@@ -48,6 +48,7 @@ const mockArtwork = {
   status: 'IN_PROGRESS',
   progress: 0,
   imageUrl: null,
+  updatedAt: new Date('2026-03-10'),
   design: mockDesign,
 };
 
@@ -445,6 +446,68 @@ describe('Artwork Service', () => {
     });
   });
 
+  describe('publishArtwork', () => {
+    test('자랑 취소 시 좋아요 레코드를 삭제하고 likeCount를 0으로 초기화한다', async () => {
+      const completedArtwork = { ...mockArtwork, status: 'COMPLETED', isPublic: true, likeCount: 10 };
+      mockPrisma.artwork.findUnique.mockResolvedValue(completedArtwork);
+      mockPrisma.artwork.update.mockResolvedValue({
+        id: 'artwork-1', isPublic: false, title: null, publishedAt: null,
+      });
+      mockPrisma.communityLike.deleteMany.mockResolvedValue({ count: 10 });
+
+      const result = await artworkService.publishArtwork({
+        artworkId: 'artwork-1',
+        userId: 'user-1',
+        isPublic: false,
+      });
+
+      expect(result.isPublic).toBe(false);
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(mockPrisma.artwork.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            isPublic: false,
+            likeCount: 0,
+            updatedAt: new Date('2026-03-10'),
+          }),
+        }),
+      );
+      expect(mockPrisma.communityLike.deleteMany).toHaveBeenCalledWith({
+        where: { artworkId: 'artwork-1' },
+      });
+    });
+
+    test('자랑하기 시 좋아요를 초기화하지 않는다', async () => {
+      const completedArtwork = { ...mockArtwork, status: 'COMPLETED' };
+      mockPrisma.artwork.findUnique.mockResolvedValue(completedArtwork);
+      mockPrisma.artwork.update.mockResolvedValue({
+        id: 'artwork-1', isPublic: true, title: null, publishedAt: new Date(),
+      });
+      mockPrisma.follow = { findMany: jest.fn().mockResolvedValue([]) };
+
+      await artworkService.publishArtwork({
+        artworkId: 'artwork-1',
+        userId: 'user-1',
+        isPublic: true,
+      });
+
+      expect(mockPrisma.communityLike.deleteMany).not.toHaveBeenCalled();
+      expect(mockPrisma.artwork.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ updatedAt: new Date('2026-03-10') }),
+        }),
+      );
+    });
+
+    test('미완성 작품은 공개할 수 없다', async () => {
+      mockPrisma.artwork.findUnique.mockResolvedValue(mockArtwork); // status: IN_PROGRESS
+
+      await expect(
+        artworkService.publishArtwork({ artworkId: 'artwork-1', userId: 'user-1', isPublic: true }),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+  });
+
   describe('getPublishedArtworks', () => {
     const publishedArtwork = {
       id: 'artwork-1',
@@ -496,7 +559,7 @@ describe('Artwork Service', () => {
 
       await artworkService.getPublishedArtworks({
         userId: 'user-1',
-        sort: 'popular',
+        sort: 'likes',
         page: 1,
         size: 20,
       });

@@ -33,7 +33,7 @@ const listUserPublishedArtworks = z.object({
     userId: z.string().uuid('유효한 사용자 ID가 아닙니다.'),
   }),
   query: z.object({
-    sort: z.enum(['recent', 'popular', 'oldest']).default('recent'),
+    sort: z.enum(['recent', 'likes', 'oldest']).default('recent'),
     page: z.coerce.number().int().min(1).max(100, '페이지는 최대 100까지 조회 가능합니다.').default(1),
     size: z.coerce.number().int().min(1).max(50).default(20),
   }),
